@@ -12,9 +12,10 @@
  * cost of one wide read is lower than the cost of being clever.
  */
 
-import {and, asc, eq, gte, inArray, lt} from 'drizzle-orm'
+import {and, asc, desc, eq, gte, inArray, lt} from 'drizzle-orm'
 
 import {
+  auditLog,
   booking,
   client,
   practitioner,
@@ -221,6 +222,7 @@ export const ANY = 'any'
 const UNKNOWN = '00000000-0000-0000-0000-000000000000'
 
 export type BookingDetail = {
+  id: string
   reference: string
   startsAt: Date
   endsAt: Date
@@ -248,6 +250,7 @@ export async function getBookingByReference(
 ): Promise<BookingDetail | undefined> {
   const [row] = await db
     .select({
+      id: booking.id,
       reference: booking.reference,
       startsAt: booking.startsAt,
       endsAt: booking.endsAt,
@@ -279,6 +282,33 @@ export async function getBookingByReference(
   const {servicePricePence, pricePence, ...rest} = row
   return {...rest, pricePence: pricePence ?? servicePricePence}
 }
+
+/**
+ * What happened to the confirmation email, according to the audit log.
+ *
+ * The booking is committed before the email is attempted, so "did it send?"
+ * is a fact about the past that has to be recorded somewhere rather than
+ * recomputed. `undefined` means no attempt has been logged at all.
+ */
+export async function getEmailOutcome(
+  db: Database,
+  bookingId: string,
+): Promise<{sent: boolean; reason?: string} | undefined> {
+  const [row] = await db
+    .select({action: auditLog.action, detail: auditLog.detail})
+    .from(auditLog)
+    .where(and(eq(auditLog.bookingId, bookingId), inArray(auditLog.action, EMAIL_ACTIONS)))
+    .orderBy(desc(auditLog.createdAt))
+    .limit(1)
+
+  if (!row) return undefined
+  return {
+    sent: row.action === 'email_sent',
+    reason: typeof row.detail.reason === 'string' ? row.detail.reason : undefined,
+  }
+}
+
+const EMAIL_ACTIONS = ['email_sent', 'email_failed']
 
 /** Today, as a calendar date in the clinic's timezone. */
 export function today(now: Date = new Date()): string {

@@ -2,7 +2,10 @@ import type {Metadata} from 'next'
 import Link from 'next/link'
 import {notFound} from 'next/navigation'
 
-import {getBookingByReference} from '../../../../src/availability/query.ts'
+import {
+  getBookingByReference,
+  getEmailOutcome,
+} from '../../../../src/availability/query.ts'
 import {
   calendarDateAt,
   formatCalendarDate,
@@ -22,6 +25,7 @@ export default async function Confirmation({params}: Props) {
   const detail = await getBookingByReference(db, reference)
   if (!detail) notFound()
 
+  const email = await getEmailOutcome(db, detail.id)
   const date = formatCalendarDate(calendarDateAt(detail.startsAt))
 
   return (
@@ -34,12 +38,23 @@ export default async function Confirmation({params}: Props) {
         {detail.status === 'cancelled' ? (
           <>This appointment has been cancelled and the time released.</>
         ) : (
-          <>
-            Booked for {detail.clientName}. A confirmation is on its way to{' '}
-            {detail.clientEmail}.
-          </>
+          <>Booked for {detail.clientName}.</>
         )}
       </p>
+
+      {detail.status === 'confirmed' && email && !email.sent ? (
+        // The booking stands. Saying so plainly is better than a silent
+        // failure that has somebody waiting for an email that never comes.
+        <p className="mt-4 border-2 border-warn px-4 py-3 text-sm text-warn">
+          <strong className="font-medium">The confirmation email did not send.</strong> The
+          appointment is booked and the details are below — take a note of the reference, or
+          add it to your calendar using the link underneath.
+        </p>
+      ) : null}
+
+      {detail.status === 'confirmed' && email?.sent ? (
+        <p className="mt-4 text-ink-2">A confirmation is on its way to {detail.clientEmail}.</p>
+      ) : null}
 
       <dl className="mt-8 border-y border-line py-4">
         <div className="flex gap-4 py-1">
@@ -73,6 +88,21 @@ export default async function Confirmation({params}: Props) {
           <dd className="tabular">{formatPrice(detail.pricePence)}</dd>
         </div>
       </dl>
+
+      <p className="mt-6">
+        {/*
+          A plain link to a route that regenerates the file on request, rather
+          than a blob built in the browser. It works with JavaScript off, and a
+          cancelled appointment downloads as CANCELLED rather than as a stale
+          copy of something that is no longer happening.
+        */}
+        <a
+          href={`/api/ics/${detail.reference}`}
+          className="inline-block border-2 border-accent px-4 py-2 text-sm font-medium text-accent transition-colors duration-[120ms] hover:bg-surface-2"
+        >
+          Add to calendar (.ics)
+        </a>
+      </p>
 
       <p className="mt-6 text-sm text-ink-2">
         Keep the reference. It is how the clinic finds this appointment, and how you will

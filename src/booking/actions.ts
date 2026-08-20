@@ -14,8 +14,10 @@ import {
   parseWallClockTime,
 } from '../availability/time.ts'
 import {db} from '../db/index.ts'
-import {client} from '../db/schema.ts'
+import {auditLog, client} from '../db/schema.ts'
+import {formatDateWithYear} from '../format.ts'
 import {createBooking} from './create.ts'
+import {sendConfirmationEmail} from './email.ts'
 
 export type BookingFormState = {
   errors?: Partial<Record<'name' | 'email' | 'phone' | 'slot', string>>
@@ -107,6 +109,29 @@ export async function createBookingAction(
       `/book/${service.slug}/${practitionerSlug}?date=${date}&taken=${encodeURIComponent(time)}`,
     )
   }
+
+  // The appointment is committed. Everything from here is best effort, and
+  // none of it is allowed to change that -- if Resend has a bad minute the
+  // person still has their slot, and the confirmation page says the email did
+  // not send rather than pretending it did.
+  const outcome = await sendConfirmationEmail({
+    to: email,
+    clientName: name,
+    reference: result.booking.reference,
+    serviceName: service.name,
+    practitionerName: practitioner.name,
+    practitionerTitle: practitioner.title,
+    startsAt: result.booking.startsAt,
+    endsAt: result.booking.endsAt,
+    status: 'confirmed',
+    whenText: `${formatDateWithYear(date)} at ${time}`,
+  })
+
+  await db.insert(auditLog).values({
+    bookingId: result.booking.id,
+    action: outcome.sent ? 'email_sent' : 'email_failed',
+    detail: outcome.sent ? {to: email} : {to: email, reason: outcome.reason},
+  })
 
   redirect(`/book/confirm/${result.booking.reference}`)
 }
