@@ -1,0 +1,259 @@
+/**
+ * The availability engine.
+ *
+ * A pure function. It takes the clinic's data for one day and returns the
+ * start times that can actually be booked; it opens no connection, reads no
+ * clock and holds no state, so every rule below can be tested directly against
+ * fixtures rather than inferred from a database.
+ *
+ * `now` is an argument for the same reason. Lead time is one of the rules, and
+ * a function that reads the system clock cannot be tested without either
+ * freezing time globally or waiting for it.
+ *
+ * The rules, in the order they are applied:
+ *
+ *  1. The practitioner offers the service at all.
+ *  2. They have working hours on that weekday.
+ *  3. The appointment's duration is theirs, not the service's — see
+ *     `practitioner_service.duration_minutes_override`. This is what makes the
+ *     calculation non-trivial: an initial assessment is 45 minutes with Nadia
+ *     and 60 with Tomas, so the same service produces a different grid, a
+ *     different last-bookable slot, and a different answer to "does this fit
+ *     before closing?" on the same day.
+ *  4. Slots are offered every 15 minutes but appointments are 30, 45 or 60, so
+ *     a 45-minute appointment may start at 09:15.
+ *  5. The whole appointment must end on or before the end of the working day.
+ *  6. It must not overlap a confirmed booking. Cancelled bookings free their
+ *     slot, which is the same rule the database's exclusion constraint applies.
+ *  7. It must not overlap time off. Lunch, leave and a one-off block are one
+ *     mechanism, and the engine cannot tell them apart.
+ *  8. It must start at least two hours from now, and no more than 60 days out.
+ *
+ * With `practitionerId: 'any'` all of the above runs per practitioner and the
+ * results are unioned, each slot carrying whoever is free for it.
+ */
+
+import {
+  addDays,
+  addMinutes,
+  formatCalendarDate,
+  formatTime,
+  instantFromWallClock,
+  parseCalendarDate,
+  parseWallClockTime,
+  weekdayOf,
+  type CalendarDate,
+} from './time'
+
+/** Slots are offered on a quarter-hour grid regardless of appointment length. */
+export const SLOT_GRANULARITY_MINUTES = 15
+
+/** Nothing may be booked inside the next two hours. */
+export const LEAD_TIME_MINUTES = 120
+
+/** Nothing may be booked more than sixty days out. */
+export const HORIZON_DAYS = 60
+
+export type EnginePractitioner = {
+  id: string
+  name: string
+  slug: string
+}
+
+export type EngineService = {
+  id: string
+  defaultDurationMinutes: number
+}
+
+export type EnginePractitionerService = {
+  practitionerId: string
+  serviceId: string
+  durationMinutesOverride: number | null
+}
+
+export type EngineWorkingHours = {
+  practitionerId: string
+  /** 0 = Sunday. */
+  weekday: number
+  /** Local wall clock, `HH:MM` or `HH:MM:SS`. */
+  startTime: string
+  endTime: string
+}
+
+export type EngineBooking = {
+  practitionerId: string
+  startsAt: Date
+  endsAt: Date
+  status: 'confirmed' | 'cancelled'
+}
+
+export type EngineTimeOff = {
+  practitionerId: string
+  startsAt: Date
+  endsAt: Date
+}
+
+/**
+ * Everything the engine needs, fetched once. The caller is expected to have
+ * narrowed these to the day in question, but the engine does not rely on it:
+ * anything irrelevant is filtered out again here, so an over-broad fetch is
+ * merely wasteful rather than wrong.
+ */
+export type AvailabilityData = {
+  service: EngineService
+  practitioners: EnginePractitioner[]
+  practitionerServices: EnginePractitionerService[]
+  workingHours: EngineWorkingHours[]
+  bookings: EngineBooking[]
+  timeOff: EngineTimeOff[]
+}
+
+export type AvailabilityQuery = {
+  /** A local calendar date, `YYYY-MM-DD`. Not an instant: a day, as read here. */
+  date: string
+  serviceId: string
+  practitionerId: string | 'any'
+  now: Date
+  data: AvailabilityData
+}
+
+export type Slot = {
+  startsAt: Date
+  endsAt: Date
+  /** `09:15`, as read in the clinic's timezone. */
+  time: string
+  durationMinutes: number
+  practitionerId: string
+  practitionerName: string
+}
+
+export type Availability = {
+  date: string
+  /** Ascending by start time, then by practitioner name. */
+  slots: Slot[]
+}
+
+type Interval = {startsAt: Date; endsAt: Date}
+
+/** Half-open `[start, end)`, the same bound the exclusion constraint uses. */
+function overlaps(a: Interval, b: Interval): boolean {
+  return a.startsAt < b.endsAt && b.startsAt < a.endsAt
+}
+
+export function getAvailability(query: AvailabilityQuery): Availability {
+  const {date, serviceId, practitionerId, now, data} = query
+  const day = parseCalendarDate(date)
+  const weekday = weekdayOf(day)
+
+  const earliest = addMinutes(now, LEAD_TIME_MINUTES)
+  const horizon = addDays(now, HORIZON_DAYS)
+
+  const offering = new Map(
+    data.practitionerServices
+      .filter((ps) => ps.serviceId === serviceId)
+      .map((ps) => [ps.practitionerId, ps]),
+  )
+
+  const candidates = data.practitioners.filter(
+    (p) => offering.has(p.id) && (practitionerId === 'any' || p.id === practitionerId),
+  )
+
+  const slots: Slot[] = []
+
+  for (const practitioner of candidates) {
+    const link = offering.get(practitioner.id)
+    const durationMinutes =
+      link?.durationMinutesOverride ?? data.service.defaultDurationMinutes
+
+    // A zero or negative duration would make every slot fit trivially and the
+    // grid infinite. It is a data error, not an availability answer.
+    if (durationMinutes <= 0) continue
+
+    const busy = busyIntervalsFor(practitioner.id, data)
+
+    for (const shift of shiftsFor(practitioner.id, weekday, day, data)) {
+      for (
+        let start = shift.startsAt;
+        // Rule 5: the appointment ends on or before the end of the day. Tested
+        // on the end rather than the start, which is what makes a 60-minute
+        // appointment stop being offered half an hour before a 30-minute one.
+        addMinutes(start, durationMinutes) <= shift.endsAt;
+        start = addMinutes(start, SLOT_GRANULARITY_MINUTES)
+      ) {
+        const end = addMinutes(start, durationMinutes)
+
+        if (start < earliest) continue
+        // Slots only advance, so nothing after this one is inside the horizon.
+        if (start > horizon) break
+        if (busy.some((interval) => overlaps({startsAt: start, endsAt: end}, interval))) {
+          continue
+        }
+
+        slots.push({
+          startsAt: start,
+          endsAt: end,
+          time: formatTime(start),
+          durationMinutes,
+          practitionerId: practitioner.id,
+          practitionerName: practitioner.name,
+        })
+      }
+    }
+  }
+
+  slots.sort(
+    (a, b) =>
+      a.startsAt.getTime() - b.startsAt.getTime() ||
+      a.practitionerName.localeCompare(b.practitionerName),
+  )
+
+  return {date: formatCalendarDate(day), slots}
+}
+
+/**
+ * The practitioner's working periods on that date, as instants.
+ *
+ * The wall-clock hours in `working_hours` are resolved against the clinic's
+ * timezone *on this date*, which is the entire DST story: 09:00 is 08:00Z in
+ * August and 09:00Z in November, and the practitioner notices neither.
+ *
+ * Several rows for one weekday are a split shift and are honoured as written.
+ * A row whose end is not after its start describes no time at all and is
+ * skipped rather than wrapping past midnight — an overnight physiotherapy
+ * clinic is not a thing this models.
+ */
+function shiftsFor(
+  practitionerId: string,
+  weekday: number,
+  day: CalendarDate,
+  data: AvailabilityData,
+): Interval[] {
+  return data.workingHours
+    .filter((wh) => wh.practitionerId === practitionerId && wh.weekday === weekday)
+    .map((wh) => ({
+      startsAt: instantFromWallClock(day, parseWallClockTime(wh.startTime)),
+      endsAt: instantFromWallClock(day, parseWallClockTime(wh.endTime)),
+    }))
+    .filter((shift) => shift.endsAt > shift.startsAt)
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
+}
+
+/**
+ * Confirmed bookings and time off, flattened into one list.
+ *
+ * The engine has no reason to distinguish them: both mean this practitioner is
+ * not free between these two instants. Cancelled bookings are absent for the
+ * same reason they leave the exclusion constraint's index — the slot is free
+ * again, and nothing was deleted to make it so.
+ */
+function busyIntervalsFor(practitionerId: string, data: AvailabilityData): Interval[] {
+  const bookings = data.bookings
+    .filter((b) => b.practitionerId === practitionerId && b.status === 'confirmed')
+    .map((b) => ({startsAt: b.startsAt, endsAt: b.endsAt}))
+
+  const off = data.timeOff
+    .filter((t) => t.practitionerId === practitionerId)
+    .map((t) => ({startsAt: t.startsAt, endsAt: t.endsAt}))
+
+  return [...bookings, ...off]
+}
