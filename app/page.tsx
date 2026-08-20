@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 import {listPractitioners, listServices} from '../src/availability/query.ts'
-import {db} from '../src/db/index.ts'
+import {getDb} from '../src/db/index.ts'
 import {formatDuration, formatPrice} from '../src/format.ts'
 
 // Reads the clinic's services and practitioners, so it is rendered per request
@@ -10,6 +10,7 @@ import {formatDuration, formatPrice} from '../src/format.ts'
 export const dynamic = 'force-dynamic'
 
 export default async function Home() {
+  const db = getDb()
   const [services, practitioners] = await Promise.all([
     listServices(db),
     listPractitioners(db),

@@ -11,7 +11,7 @@ import {
   today,
 } from '../../../../src/availability/query.ts'
 import {shiftDate} from '../../../../src/availability/time.ts'
-import {db} from '../../../../src/db/index.ts'
+import {getDb} from '../../../../src/db/index.ts'
 import {formatDate, formatDateShort, formatDuration} from '../../../../src/format.ts'
 
 export const dynamic = 'force-dynamic'
@@ -25,7 +25,7 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
 export async function generateMetadata({params}: Props): Promise<Metadata> {
   const {service} = await params
-  const row = await getServiceBySlug(db, service)
+  const row = await getServiceBySlug(getDb(), service)
   return {title: row ? `${row.name} — choose a time` : 'Choose a time'}
 }
 
@@ -33,6 +33,7 @@ export default async function ChooseTime({params, searchParams}: Props) {
   const {service: serviceSlug, practitioner: practitionerSlug} = await params
   const {date: dateParam, taken} = await searchParams
 
+  const db = getDb()
   const service = await getServiceBySlug(db, serviceSlug)
   if (!service) notFound()
 

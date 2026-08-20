@@ -1,6 +1,6 @@
 import {getBookingByReference} from '../../../../src/availability/query.ts'
 import {buildCalendar, calendarFilename} from '../../../../src/booking/ics.ts'
-import {db} from '../../../../src/db/index.ts'
+import {getDb} from '../../../../src/db/index.ts'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +16,7 @@ export async function GET(
   {params}: {params: Promise<{reference: string}>},
 ) {
   const {reference} = await params
-  const detail = await getBookingByReference(db, reference)
+  const detail = await getBookingByReference(getDb(), reference)
 
   if (!detail) {
     return new Response('No appointment with that reference.', {

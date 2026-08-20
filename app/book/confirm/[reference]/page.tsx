@@ -11,7 +11,7 @@ import {
   formatCalendarDate,
   formatTime,
 } from '../../../../src/availability/time.ts'
-import {db} from '../../../../src/db/index.ts'
+import {getDb} from '../../../../src/db/index.ts'
 import {formatDateWithYear, formatPrice} from '../../../../src/format.ts'
 
 export const dynamic = 'force-dynamic'
@@ -22,6 +22,7 @@ type Props = {params: Promise<{reference: string}>}
 
 export default async function Confirmation({params}: Props) {
   const {reference} = await params
+  const db = getDb()
   const detail = await getBookingByReference(db, reference)
   if (!detail) notFound()
 

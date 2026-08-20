@@ -14,7 +14,7 @@ import {
   parseCalendarDate,
   parseWallClockTime,
 } from '../availability/time.ts'
-import {db} from '../db/index.ts'
+import {getDb} from '../db/index.ts'
 import {auditLog, client} from '../db/schema.ts'
 import {formatDateWithYear} from '../format.ts'
 import {cancelBooking} from './cancel.ts'
@@ -52,6 +52,7 @@ export async function createBookingAction(
   const date = text(form, 'date')
   const time = text(form, 'time')
 
+  const db = getDb()
   const name = text(form, 'name')
   const email = text(form, 'email')
   const phone = text(form, 'phone')
@@ -158,6 +159,7 @@ export async function cancelBookingAction(
   _previous: CancelFormState,
   form: FormData,
 ): Promise<CancelFormState> {
+  const db = getDb()
   const reference = text(form, 'reference')
   const reason = text(form, 'reason')
 

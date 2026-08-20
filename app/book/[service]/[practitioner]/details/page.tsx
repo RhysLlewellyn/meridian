@@ -6,7 +6,7 @@ import {
   getServiceBySlug,
   listPractitionersForService,
 } from '../../../../../src/availability/query.ts'
-import {db} from '../../../../../src/db/index.ts'
+import {getDb} from '../../../../../src/db/index.ts'
 import {formatDate, formatDuration, formatPrice} from '../../../../../src/format.ts'
 import {DetailsForm} from './DetailsForm.tsx'
 
@@ -26,6 +26,7 @@ export default async function Details({params, searchParams}: Props) {
   const {service: serviceSlug, practitioner: practitionerSlug} = await params
   const {date, time} = await searchParams
 
+  const db = getDb()
   const service = await getServiceBySlug(db, serviceSlug)
   if (!service) notFound()
 

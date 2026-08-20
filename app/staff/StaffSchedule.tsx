@@ -8,7 +8,7 @@ import {
 } from '../../src/availability/query.ts'
 import {formatTime, shiftDate} from '../../src/availability/time.ts'
 import {CancelForm} from '../booking/[reference]/CancelForm.tsx'
-import {db} from '../../src/db/index.ts'
+import {getDb} from '../../src/db/index.ts'
 import {formatDate, formatDateShort, formatDuration} from '../../src/format.ts'
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
@@ -35,6 +35,7 @@ type Props = {
 export async function StaffSchedule({practitionerSlug, date: dateParam, open}: Props) {
   const date = dateParam && DATE_PATTERN.test(dateParam) ? dateParam : today()
 
+  const db = getDb()
   const [bookings, onShift, everybody] = await Promise.all([
     listDayBookings(db, date, practitionerSlug),
     practitionersOnShift(db, date),

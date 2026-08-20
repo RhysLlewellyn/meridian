@@ -2,7 +2,7 @@ import type {Metadata} from 'next'
 import Link from 'next/link'
 
 import {listServices} from '../../src/availability/query.ts'
-import {db} from '../../src/db/index.ts'
+import {getDb} from '../../src/db/index.ts'
 import {formatDuration, formatPrice} from '../../src/format.ts'
 
 export const dynamic = 'force-dynamic'
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {title: 'Choose a service'}
 
 export default async function ChooseService() {
-  const services = await listServices(db)
+  const services = await listServices(getDb())
 
   return (
     <main>

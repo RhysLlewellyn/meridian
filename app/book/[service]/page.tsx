@@ -7,7 +7,7 @@ import {
   getServiceBySlug,
   listPractitionersForService,
 } from '../../../src/availability/query.ts'
-import {db} from '../../../src/db/index.ts'
+import {getDb} from '../../../src/db/index.ts'
 import {formatDuration, formatPrice} from '../../../src/format.ts'
 
 export const dynamic = 'force-dynamic'
@@ -16,11 +16,12 @@ type Props = {params: Promise<{service: string}>}
 
 export async function generateMetadata({params}: Props): Promise<Metadata> {
   const {service} = await params
-  const row = await getServiceBySlug(db, service)
+  const row = await getServiceBySlug(getDb(), service)
   return {title: row ? `${row.name} — choose a practitioner` : 'Choose a practitioner'}
 }
 
 export default async function ChoosePractitioner({params}: Props) {
+  const db = getDb()
   const {service: serviceSlug} = await params
   const service = await getServiceBySlug(db, serviceSlug)
   if (!service) notFound()

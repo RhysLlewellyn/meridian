@@ -8,7 +8,7 @@ import {
   formatCalendarDate,
   formatTime,
 } from '../../../src/availability/time.ts'
-import {db} from '../../../src/db/index.ts'
+import {getDb} from '../../../src/db/index.ts'
 import {formatDateWithYear, formatPrice} from '../../../src/format.ts'
 import {CancelForm} from './CancelForm.tsx'
 
@@ -20,7 +20,7 @@ type Props = {params: Promise<{reference: string}>}
 
 export default async function ManageBooking({params}: Props) {
   const {reference} = await params
-  const detail = await getBookingByReference(db, reference)
+  const detail = await getBookingByReference(getDb(), reference)
   if (!detail) notFound()
 
   const date = formatCalendarDate(calendarDateAt(detail.startsAt))
