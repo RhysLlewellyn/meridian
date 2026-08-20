@@ -1,6 +1,7 @@
 'use server'
 
 import {eq} from 'drizzle-orm'
+import {revalidatePath} from 'next/cache'
 import {redirect} from 'next/navigation'
 
 import {
@@ -16,6 +17,7 @@ import {
 import {db} from '../db/index.ts'
 import {auditLog, client} from '../db/schema.ts'
 import {formatDateWithYear} from '../format.ts'
+import {cancelBooking} from './cancel.ts'
 import {createBooking} from './create.ts'
 import {sendConfirmationEmail} from './email.ts'
 
@@ -134,4 +136,36 @@ export async function createBookingAction(
   })
 
   redirect(`/book/confirm/${result.booking.reference}`)
+}
+
+export type CancelFormState = {error?: string; reason?: string}
+
+const CANCEL_MESSAGES: Record<string, string> = {
+  no_reason: 'Please say why you are cancelling, so the clinic can offer the time on.',
+  not_found: 'No appointment with that reference.',
+  already_cancelled: 'That appointment has already been cancelled.',
+  already_started:
+    'That appointment has already started. Phone the clinic rather than cancelling here.',
+}
+
+/**
+ * Cancel, from the manage page.
+ *
+ * `revalidatePath` rather than a redirect: the person stays on the page they
+ * were on and watches it change state, which is what they came to see.
+ */
+export async function cancelBookingAction(
+  _previous: CancelFormState,
+  form: FormData,
+): Promise<CancelFormState> {
+  const reference = text(form, 'reference')
+  const reason = text(form, 'reason')
+
+  const result = await cancelBooking(db, reference, reason)
+  if (!result.ok) {
+    return {error: CANCEL_MESSAGES[result.reason] ?? 'That could not be cancelled.', reason}
+  }
+
+  revalidatePath(`/booking/${reference}`)
+  return {}
 }

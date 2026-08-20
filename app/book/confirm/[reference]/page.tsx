@@ -105,8 +105,15 @@ export default async function Confirmation({params}: Props) {
       </p>
 
       <p className="mt-6 text-sm text-ink-2">
-        Keep the reference. It is how the clinic finds this appointment, and how you will
-        change or cancel it.
+        Keep the reference. It is how the clinic finds this appointment, and how you get
+        back to it:{' '}
+        <Link
+          href={`/booking/${detail.reference}`}
+          className="underline underline-offset-4"
+        >
+          view or cancel this appointment
+        </Link>
+        .
       </p>
 
       <p className="mt-8">
