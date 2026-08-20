@@ -1,0 +1,12 @@
+# What Vercel does not need in order to build this.
+#
+# The build happens on their side from source, so shipping a local build
+# output means uploading tens of megabytes that are thrown away and rebuilt.
+
+.next
+node_modules
+coverage
+*.tsbuildinfo
+
+# Local Postgres for the test suite. Production is Neon.
+docker-compose.yml
