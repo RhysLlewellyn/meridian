@@ -1,0 +1,19 @@
+# A real Postgres for the test suite.
+#
+# The concurrency test has to run against a real database -- the guarantee it
+# proves lives in Postgres, so a mock would prove nothing. Port 5433 rather
+# than 5432 so this never collides with a Postgres already installed locally.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: meridian
+      POSTGRES_PASSWORD: meridian
+      POSTGRES_DB: meridian
+    ports:
+      - '5433:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U meridian -d meridian']
+      interval: 2s
+      timeout: 3s
+      retries: 30

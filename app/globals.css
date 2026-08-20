@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+/**
+ * Tokens. Everything visual comes from here.
+ *
+ * Deliberately not Fieldnote: that was warm paper and serifs, this is an
+ * interface. Cool, dense, bordered rather than shadowed.
+ */
+@theme {
+  --color-surface: #fbfbfc;
+  --color-surface-2: #f2f3f5;
+  --color-line: #dfe1e5;
+  --color-ink: #101114;
+  --color-ink-2: #43474e;
+  --color-muted: #767c86;
+
+  --color-accent: #0f5257; /* deep teal - actions, selected state */
+  --color-accent-ink: #ffffff;
+  --color-warn: #8a5a00; /* held / pending */
+  --color-danger: #8c2f2f; /* cancelled */
+
+  --font-sans: var(--font-archivo), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+/**
+ * Times and prices align in a column or they are hard to scan. In a booking
+ * interface this is functional rather than decorative.
+ */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
