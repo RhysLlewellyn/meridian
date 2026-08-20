@@ -159,14 +159,29 @@ export default async function ChooseTime({params, searchParams}: Props) {
                   name="time"
                   value={slot.time}
                   formAction={`${detailsBase}/${slotSlug(offering, slot.practitionerId)}/details`}
-                  aria-label={`${slot.time}, ${formatDate(date)}, ${formatDuration(slot.durationMinutes)}, with ${slot.practitionerName}`}
                   className="tabular w-full border border-line bg-surface px-3 py-2 text-left transition-colors duration-[120ms] hover:border-accent hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
+                  {/*
+                    The accessible name is built from content rather than an
+                    aria-label, and the hidden half comes last. WCAG 2.5.3
+                    (Label in Name) wants the visible text to appear inside the
+                    accessible name, and an aria-label that reordered the same
+                    facts -- "09:15, Tuesday 25 August, 45 minutes, with Nadia
+                    Okafor" against visible "09:15 Nadia Okafor" -- fails it,
+                    which breaks anybody driving the page by voice. Appending
+                    instead keeps the visible text a prefix of the spoken one,
+                    and a slot still reads sensibly out of context.
+                  */}
                   <span className="block font-medium">{slot.time}</span>
                   <span className="block text-xs text-muted">
                     {practitionerSlug === ANY
                       ? slot.practitionerName
                       : formatDuration(slot.durationMinutes)}
+                  </span>
+                  <span className="sr-only">
+                    {practitionerSlug === ANY
+                      ? `, ${formatDuration(slot.durationMinutes)}, ${formatDate(date)}`
+                      : `, with ${slot.practitionerName}, ${formatDate(date)}`}
                   </span>
                 </button>
               </li>

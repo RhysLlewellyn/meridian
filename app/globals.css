@@ -12,7 +12,15 @@
   --color-line: #dfe1e5;
   --color-ink: #101114;
   --color-ink-2: #43474e;
-  --color-muted: #767c86;
+  /*
+   * The brief specifies #767C86. It is the one token in that palette which
+   * fails WCAG AA: 4.06:1 on the surface and 3.78:1 on surface-2, against a
+   * requirement of 4.5:1, at every size this interface uses it. Darkened
+   * along its own hue until it clears on both grounds -- 4.88 and 4.54 --
+   * which is the smallest change that keeps the colour the brief asked for
+   * and the accessibility the brief also asked for.
+   */
+  --color-muted: #6a6f79;
 
   --color-accent: #0f5257; /* deep teal - actions, selected state */
   --color-accent-ink: #ffffff;
