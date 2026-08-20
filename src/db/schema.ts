@@ -148,6 +148,10 @@ export const timeOff = pgTable(
     startsAt: at('starts_at').notNull(),
     endsAt: at('ends_at').notNull(),
     reason: text('reason').notNull(),
+    /** Same generated range as booking.during, for the same reason. */
+    during: tstzrange('during').generatedAlwaysAs(
+      sql`tstzrange("starts_at", "ends_at", '[)')`,
+    ),
   },
   (t) => [index('time_off_practitioner_starts_idx').on(t.practitionerId, t.startsAt)],
 )
