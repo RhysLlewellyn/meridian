@@ -27,11 +27,13 @@ import {
 import type {Database} from '../booking/create.ts'
 import {getAvailability, type AvailabilityData, type Availability} from './engine.ts'
 import {
+  addCalendarDays,
   addDays,
   calendarDateAt,
   formatCalendarDate,
   instantFromWallClock,
   parseCalendarDate,
+  weekdayOf,
 } from './time.ts'
 
 export type ServiceRow = typeof service.$inferSelect
@@ -309,6 +311,91 @@ export async function getEmailOutcome(
 }
 
 const EMAIL_ACTIONS = ['email_sent', 'email_failed']
+
+export type StaffBooking = {
+  reference: string
+  startsAt: Date
+  endsAt: Date
+  status: 'confirmed' | 'cancelled'
+  cancellationReason: string | null
+  serviceName: string
+  practitionerName: string
+  practitionerSlug: string
+  clientName: string
+  clientEmail: string
+  clientPhone: string | null
+}
+
+/**
+ * Everything happening on one day, cancellations included.
+ *
+ * The receptionist's view is not the client's: a cancelled appointment still
+ * has to appear, because somebody will ring about it. Filtering it out here
+ * would leave the front desk unable to see the thing they are being asked
+ * about.
+ *
+ * Bounded by the London day rather than the UTC one — 25 October has 25 hours
+ * in it, and an appointment at 23:30 belongs to the day the clinic thinks it
+ * does.
+ */
+export async function listDayBookings(
+  db: Database,
+  date: string,
+  practitionerSlug?: string,
+): Promise<StaffBooking[]> {
+  const day = parseCalendarDate(date)
+  const dayStart = instantFromWallClock(day, {hour: 0, minute: 0, second: 0})
+  const dayEnd = instantFromWallClock(addCalendarDays(day, 1), {
+    hour: 0,
+    minute: 0,
+    second: 0,
+  })
+
+  const filters = [gte(booking.startsAt, dayStart), lt(booking.startsAt, dayEnd)]
+  if (practitionerSlug) filters.push(eq(practitioner.slug, practitionerSlug))
+
+  return db
+    .select({
+      reference: booking.reference,
+      startsAt: booking.startsAt,
+      endsAt: booking.endsAt,
+      status: booking.status,
+      cancellationReason: booking.cancellationReason,
+      serviceName: service.name,
+      practitionerName: practitioner.name,
+      practitionerSlug: practitioner.slug,
+      clientName: client.name,
+      clientEmail: client.email,
+      clientPhone: client.phone,
+    })
+    .from(booking)
+    .innerJoin(service, eq(service.id, booking.serviceId))
+    .innerJoin(practitioner, eq(practitioner.id, booking.practitionerId))
+    .innerJoin(client, eq(client.id, booking.clientId))
+    .where(and(...filters))
+    .orderBy(asc(booking.startsAt), asc(practitioner.name))
+}
+
+/**
+ * Who is meant to be in on a given day.
+ *
+ * Working hours alone, not working hours minus leave: somebody on a training
+ * course is still on the rota, and the front desk wants the difference between
+ * "not working today" and "working but blocked out".
+ */
+export async function practitionersOnShift(
+  db: Database,
+  date: string,
+): Promise<PractitionerRow[]> {
+  const weekday = weekdayOf(parseCalendarDate(date))
+  const rows = await db
+    .selectDistinct({practitioner})
+    .from(workingHours)
+    .innerJoin(practitioner, eq(practitioner.id, workingHours.practitionerId))
+    .where(and(eq(workingHours.weekday, weekday), eq(practitioner.active, true)))
+    .orderBy(asc(practitioner.name))
+  return rows.map((row) => row.practitioner)
+}
 
 /** Today, as a calendar date in the clinic's timezone. */
 export function today(now: Date = new Date()): string {
