@@ -155,6 +155,25 @@ export function calendarDateAt(
   return {year, month, day}
 }
 
+/**
+ * Calendar arithmetic, not instant arithmetic. Adding a day to a date is
+ * adding a day to the number on the wall, which on a transition weekend is not
+ * the same as adding 24 hours.
+ */
+export function addCalendarDays(date: CalendarDate, days: number): CalendarDate {
+  const shifted = new Date(Date.UTC(date.year, date.month - 1, date.day + days))
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth() + 1,
+    day: shifted.getUTCDate(),
+  }
+}
+
+/** `2026-09-03` plus a number of days, still as `YYYY-MM-DD`. */
+export function shiftDate(iso: string, days: number): string {
+  return formatCalendarDate(addCalendarDays(parseCalendarDate(iso), days))
+}
+
 export function addMinutes(instant: Date, minutes: number): Date {
   return new Date(instant.getTime() + minutes * MINUTE_MS)
 }

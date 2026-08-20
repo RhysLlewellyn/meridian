@@ -21,6 +21,7 @@
 import {eq, inArray} from 'drizzle-orm'
 
 import {
+  addCalendarDays,
   addMinutes,
   calendarDateAt,
   formatCalendarDate,
@@ -213,15 +214,6 @@ function reference(random: () => number): string {
 
 function at(date: CalendarDate, time: string): Date {
   return instantFromWallClock(date, parseWallClockTime(time))
-}
-
-function addCalendarDays(date: CalendarDate, days: number): CalendarDate {
-  const shifted = new Date(Date.UTC(date.year, date.month - 1, date.day + days))
-  return {
-    year: shifted.getUTCFullYear(),
-    month: shifted.getUTCMonth() + 1,
-    day: shifted.getUTCDate(),
-  }
 }
 
 /** The Monday of the week containing `date`. */
