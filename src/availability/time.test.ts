@@ -7,7 +7,7 @@ import {
   parseWallClockTime,
   weekdayOf,
   zoneOffsetMs,
-} from './time'
+} from './time.ts'
 
 const HOUR = 3_600_000
 

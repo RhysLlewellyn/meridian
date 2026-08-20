@@ -43,7 +43,7 @@ import {
   parseWallClockTime,
   weekdayOf,
   type CalendarDate,
-} from './time'
+} from './time.ts'
 
 /** Slots are offered on a quarter-hour grid regardless of appointment length. */
 export const SLOT_GRANULARITY_MINUTES = 15

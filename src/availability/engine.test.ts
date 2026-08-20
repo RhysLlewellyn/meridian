@@ -16,7 +16,7 @@ import {
   type AvailabilityData,
   type EngineBooking,
   type EngineTimeOff,
-} from './engine'
+} from './engine.ts'
 
 const NADIA = {id: 'p-nadia', name: 'Nadia Okafor', slug: 'nadia-okafor'}
 const TOMAS = {id: 'p-tomas', name: 'Tomas Iriarte', slug: 'tomas-iriarte'}
