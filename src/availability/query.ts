@@ -401,3 +401,37 @@ export async function practitionersOnShift(
 export function today(now: Date = new Date()): string {
   return formatCalendarDate(calendarDateAt(now))
 }
+
+/**
+ * The practitioner directory, with the specialties each one covers.
+ *
+ * A practitioner's specialties are not a column. They are derived from the
+ * services they are actually linked to, which means the directory's filter
+ * chips and the availability engine's idea of who can be offered for what are
+ * the same fact read twice rather than two lists that can drift apart.
+ */
+export async function listPractitionersWithSpecialties(
+  db: Database,
+): Promise<(PractitionerRow & {specialties: string[]})[]> {
+  const rows = await db
+    .select({practitioner, specialty: service.specialty})
+    .from(practitioner)
+    .innerJoin(practitionerService, eq(practitionerService.practitionerId, practitioner.id))
+    .innerJoin(service, eq(service.id, practitionerService.serviceId))
+    .where(and(eq(practitioner.active, true), eq(service.active, true)))
+    .orderBy(asc(practitioner.name), asc(service.specialty))
+
+  const byId = new Map<string, PractitionerRow & {specialties: string[]}>()
+  for (const row of rows) {
+    const existing = byId.get(row.practitioner.id)
+    if (existing) {
+      if (!existing.specialties.includes(row.specialty)) {
+        existing.specialties.push(row.specialty)
+      }
+    } else {
+      byId.set(row.practitioner.id, {...row.practitioner, specialties: [row.specialty]})
+    }
+  }
+
+  return [...byId.values()]
+}

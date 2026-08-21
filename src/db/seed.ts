@@ -53,6 +53,7 @@ const services = [
   {
     slug: 'initial-assessment',
     name: 'Initial assessment',
+    specialty: 'Assessment',
     description:
       'A first appointment: history, movement screen, and a plan. Longer than a ' +
       'follow-up because most of it is listening.',
@@ -62,6 +63,7 @@ const services = [
   {
     slug: 'follow-up',
     name: 'Follow-up treatment',
+    specialty: 'Treatment',
     description: 'Hands-on treatment and a progression of the exercise plan.',
     defaultDurationMinutes: 30,
     pricePence: 5_200,
@@ -69,6 +71,7 @@ const services = [
   {
     slug: 'extended-treatment',
     name: 'Extended treatment',
+    specialty: 'Treatment',
     description:
       'A full hour, for complex presentations or where more than one area is ' +
       'being treated.',
@@ -78,6 +81,7 @@ const services = [
   {
     slug: 'rehab-review',
     name: 'Rehab review',
+    specialty: 'Rehabilitation',
     description: 'A check on progress against the plan, and a reload of the programme.',
     defaultDurationMinutes: 30,
     pricePence: 4_800,
@@ -85,6 +89,7 @@ const services = [
   {
     slug: 'gait-analysis',
     name: 'Gait analysis',
+    specialty: 'Biomechanics',
     description: 'Video assessment of walking and running mechanics, with a written report.',
     defaultDurationMinutes: 45,
     pricePence: 8_500,

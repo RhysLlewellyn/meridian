@@ -63,6 +63,13 @@ export const service = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(),
     slug: text('slug').notNull(),
+    /**
+     * The clinical area the service belongs to — "Assessment",
+     * "Rehabilitation", "Biomechanics". One word above the name on a card,
+     * and the thing a patient scans for when they do not yet know which of
+     * five appointments they want.
+     */
+    specialty: text('specialty').notNull(),
     description: text('description').notNull(),
     /** Minutes. The fallback when a practitioner has no override. */
     defaultDurationMinutes: integer('default_duration_minutes').notNull(),

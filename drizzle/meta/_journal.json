@@ -15,6 +15,20 @@
       "when": 1787223615921,
       "tag": "0001_exclusion_constraints",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787298184271,
+      "tag": "0002_service_specialty",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787298184272,
+      "tag": "0003_service_specialty_backfill",
+      "breakpoints": true
     }
   ]
 }
