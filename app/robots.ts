@@ -1,5 +1,7 @@
 import type {MetadataRoute} from 'next'
 
+import {siteUrl} from '../src/site-url.ts'
+
 /**
  * What a crawler may look at.
  *
@@ -18,5 +20,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/booking/', '/book/confirm/', '/staff', '/api/'],
     },
+    sitemap: `${siteUrl()}/sitemap.xml`,
   }
 }
