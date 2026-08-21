@@ -31,6 +31,14 @@
  *
  * With `practitionerId: 'any'` all of the above runs per practitioner and the
  * results are unioned, each slot carrying whoever is free for it.
+ *
+ * It also reports the times that exist on the grid but cannot be booked, which
+ * is not the same question and is the one the interface needs. "Booked" and
+ * "outside working hours" are different facts, and a grid that shows only what
+ * is free collapses them into one silence: a screen reader user tabbing
+ * through six buttons cannot tell a busy Tuesday from a short one. So the
+ * unbookable grid positions come back too, each with the reason, and the day
+ * renders as a day rather than as a list of survivors.
  */
 
 import {
@@ -127,10 +135,34 @@ export type Slot = {
   practitionerName: string
 }
 
+/**
+ * Why a grid position exists but cannot be taken.
+ *
+ * There is deliberately no reason for "outside working hours", because such a
+ * position is not on the grid at all. That distinction is the whole point:
+ * 16:00 on a Thursday being *booked* and 16:00 on a Friday not *existing* are
+ * different answers to "can I come in then?", and only one of them is worth
+ * rendering.
+ */
+export type UnavailableReason = 'booked' | 'too_soon'
+
+export type UnavailableSlot = {
+  startsAt: Date
+  /** `09:15`, as read in the clinic's timezone. */
+  time: string
+  reason: UnavailableReason
+}
+
 export type Availability = {
   date: string
   /** Ascending by start time, then by practitioner name. */
   slots: Slot[]
+  /**
+   * Grid positions that exist but are not bookable, ascending by time, and
+   * never a time that also appears in `slots` — with "any practitioner", one
+   * free colleague is enough to make the time bookable.
+   */
+  unavailable: UnavailableSlot[]
 }
 
 type Interval = {startsAt: Date; endsAt: Date}
@@ -160,6 +192,19 @@ export function getAvailability(query: AvailabilityQuery): Availability {
 
   const slots: Slot[] = []
 
+  /**
+   * Blocked times, keyed by the time itself rather than by practitioner: the
+   * grid a person reads is one row of times, not three overlaid diaries. The
+   * first reason recorded for a time wins, which needs no precedence rule
+   * because the only reason that can differ between two practitioners is
+   * `booked` — lead time is a property of the clock and blocks everybody at
+   * once.
+   */
+  const blocked = new Map<string, UnavailableSlot>()
+  const block = (startsAt: Date, time: string, reason: UnavailableReason) => {
+    if (!blocked.has(time)) blocked.set(time, {startsAt, time, reason})
+  }
+
   for (const practitioner of candidates) {
     const link = offering.get(practitioner.id)
     const durationMinutes =
@@ -182,17 +227,27 @@ export function getAvailability(query: AvailabilityQuery): Availability {
       ) {
         const end = addMinutes(start, durationMinutes)
 
-        if (start < earliest) continue
         // Slots only advance, so nothing after this one is inside the horizon.
+        // Past it the grid stops rather than greying out: a date the clinic is
+        // not taking bookings for yet is a closed day, not a full one.
         if (start > horizon) break
+
+        const time = formatTime(start)
+
+        if (start < earliest) {
+          block(start, time, 'too_soon')
+          continue
+        }
+
         if (busy.some((interval) => overlaps({startsAt: start, endsAt: end}, interval))) {
+          block(start, time, 'booked')
           continue
         }
 
         slots.push({
           startsAt: start,
           endsAt: end,
-          time: formatTime(start),
+          time,
           durationMinutes,
           practitionerId: practitioner.id,
           practitionerName: practitioner.name,
@@ -207,7 +262,15 @@ export function getAvailability(query: AvailabilityQuery): Availability {
       a.practitionerName.localeCompare(b.practitionerName),
   )
 
-  return {date: formatCalendarDate(day), slots}
+  // A time one practitioner has filled is still bookable if a colleague is
+  // free, so the blocked list is resolved against the bookable one rather than
+  // reported per practitioner.
+  const bookable = new Set(slots.map((slot) => slot.time))
+  const unavailable = [...blocked.values()]
+    .filter((slot) => !bookable.has(slot.time))
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
+
+  return {date: formatCalendarDate(day), slots, unavailable}
 }
 
 /**

@@ -432,3 +432,105 @@ describe('no practitioner preference', () => {
     expect(result.slots.map((s) => s.practitionerName)).toContain('Nadia Okafor')
   })
 })
+
+describe('times that exist but cannot be booked', () => {
+  it('reports a booked stretch as unavailable rather than omitting it', () => {
+    // Nadia is booked 09:00–09:45 London on the Thursday.
+    const result = getAvailability({
+      date: '2026-09-03',
+      serviceId: ASSESSMENT.id,
+      practitionerId: NADIA.id,
+      now: NOW,
+      data: data({
+        bookings: [booking(NADIA.id, '2026-09-03T08:00:00Z', '2026-09-03T08:45:00Z')],
+      }),
+    })
+
+    const unavailable = result.unavailable.map((slot) => slot.time)
+    expect(unavailable).toEqual(['08:30', '08:45', '09:00', '09:15', '09:30'])
+    expect(result.unavailable.every((slot) => slot.reason === 'booked')).toBe(true)
+
+    // Outside the working day is not a blocked time, it is no time at all.
+    expect(unavailable).not.toContain('07:45')
+    expect(unavailable).not.toContain('16:00')
+  })
+
+  it('never reports a time that is bookable with somebody else', () => {
+    // Wednesday: Tomas is booked all day, Nadia is free. Every time Tomas
+    // cannot take is still a time the clinic can.
+    const result = getAvailability({
+      date: '2026-09-02',
+      serviceId: FOLLOW_UP.id,
+      practitionerId: 'any',
+      now: NOW,
+      data: data({
+        service: FOLLOW_UP,
+        bookings: [booking(TOMAS.id, '2026-09-02T09:00:00Z', '2026-09-02T15:00:00Z')],
+      }),
+    })
+
+    const bookable = new Set(times(result))
+    for (const slot of result.unavailable) {
+      expect(bookable.has(slot.time)).toBe(false)
+    }
+
+    // 10:00 is inside Tomas's booking and inside Nadia's free day.
+    expect(bookable.has('10:00')).toBe(true)
+    expect(result.unavailable.map((s) => s.time)).not.toContain('10:00')
+
+    // Exactly one time survives as unavailable, and it takes both
+    // practitioners to explain it: 15:45 is not on Nadia's grid at all,
+    // because a 30-minute appointment starting then would run past her 16:00
+    // close, and it is on Tomas's grid but inside his booking. Neither fact
+    // alone makes the time unbookable.
+    expect(result.unavailable.map((s) => s.time)).toEqual(['15:45'])
+    expect(result.unavailable[0]?.reason).toBe('booked')
+
+    // His booking ends at 16:00 London, and the bound is half-open, so the
+    // clinic is open again at exactly 16:00.
+    expect(bookable.has('16:00')).toBe(true)
+  })
+
+  it('distinguishes the lead-time window from a booking', () => {
+    // 10:10 London on the Thursday. Everything before 12:15 exists on the
+    // grid and is unbookable because of the clock, not because of a diary.
+    const result = getAvailability({
+      date: '2026-09-03',
+      serviceId: ASSESSMENT.id,
+      practitionerId: NADIA.id,
+      now: new Date('2026-09-03T09:10:00Z'),
+      data: data(),
+    })
+
+    expect(result.unavailable[0]?.time).toBe('08:00')
+    expect(result.unavailable.at(-1)?.time).toBe('12:00')
+    expect(result.unavailable.every((slot) => slot.reason === 'too_soon')).toBe(true)
+    expect(result.slots[0]?.time).toBe('12:15')
+  })
+
+  it('says nothing at all about a day outside the horizon or off the rota', () => {
+    // Beyond sixty days the clinic is not open for bookings yet, which is a
+    // closed day rather than a full one.
+    const beyond = getAvailability({
+      date: '2026-11-05',
+      serviceId: ASSESSMENT.id,
+      practitionerId: NADIA.id,
+      now: NOW,
+      data: data(),
+    })
+
+    // Grace works Monday and Friday; 3 September is a Thursday.
+    const offRota = getAvailability({
+      date: '2026-09-03',
+      serviceId: FOLLOW_UP.id,
+      practitionerId: GRACE.id,
+      now: NOW,
+      data: data({service: FOLLOW_UP}),
+    })
+
+    expect(beyond.slots).toEqual([])
+    expect(beyond.unavailable).toEqual([])
+    expect(offRota.slots).toEqual([])
+    expect(offRota.unavailable).toEqual([])
+  })
+})
