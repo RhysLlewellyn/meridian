@@ -1,8 +1,15 @@
 import Link from 'next/link'
 
-import {listPractitioners, listServices} from '../src/availability/query.ts'
+import {
+  listPractitionersWithSpecialties,
+  listServices,
+  today,
+} from '../src/availability/query.ts'
+import {nextAvailableByPractitioner} from '../src/availability/next-available.ts'
 import {getDb} from '../src/db/index.ts'
-import {formatDuration, formatPrice} from '../src/format.ts'
+import {formatDurationShort, formatPrice} from '../src/format.ts'
+import {PractitionerDirectory} from './PractitionerDirectory.tsx'
+import {SiteHeader} from './SiteHeader.tsx'
 
 // Reads the clinic's services and practitioners, so it is rendered per request
 // rather than baked at build time against whatever database happened to be
@@ -11,71 +18,111 @@ export const dynamic = 'force-dynamic'
 
 export default async function Home() {
   const db = getDb()
-  const [services, practitioners] = await Promise.all([
+  const [services, practitioners, next] = await Promise.all([
     listServices(db),
-    listPractitioners(db),
+    listPractitionersWithSpecialties(db),
+    nextAvailableByPractitioner(),
   ])
 
+  const specialties = [...new Set(services.map((s) => s.specialty))].sort()
+
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="font-mono text-xs tracking-[0.14em] text-muted uppercase">Meridian</h1>
+    <>
+      <SiteHeader />
 
-      <p className="mt-6 max-w-xl text-lg text-ink">
-        Physiotherapy and rehabilitation. Three practitioners, one room each, appointments
-        from 08:00.
-      </p>
+      <main id="main" tabIndex={-1} className="focus:outline-none mx-auto w-full max-w-6xl px-6 py-8">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">
+          <div>
+            <h1 className="text-2xl font-medium">Book an appointment</h1>
+            <p className="mt-1 text-ink-2">
+              Three practitioners, five appointment types. You see the same availability
+              the front desk sees — no account, no deposit.
+            </p>
+          </div>
+          <Link
+            href="/book"
+            className="border-2 border-accent bg-accent px-5 py-2.5 font-medium text-accent-ink transition-colors duration-[120ms] hover:border-ink hover:bg-ink"
+          >
+            Start booking
+          </Link>
+        </div>
 
-      <p className="mt-4 max-w-xl text-ink-2">
-        Book online and you will see the same availability the front desk sees. No account,
-        no deposit — a name, an email address, and the slot is yours.
-      </p>
+        <section aria-labelledby="services-heading" className="mt-8">
+          <h2
+            id="services-heading"
+            className="font-mono text-xs tracking-[0.14em] text-muted uppercase"
+          >
+            Appointments
+          </h2>
 
-      <p className="mt-8">
-        <Link
-          href="/book"
-          className="inline-block border-2 border-accent bg-accent px-5 py-2.5 font-medium text-accent-ink"
-        >
-          Book an appointment
-        </Link>
-      </p>
+          <ul className="mt-4 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+            {services.map((row) => (
+              <li key={row.id} className="bg-surface">
+                <Link
+                  href={`/book/${row.slug}`}
+                  className="flex h-full flex-col p-4 transition-colors duration-[120ms] hover:bg-surface-2"
+                >
+                  <p className="font-mono text-xs tracking-[0.14em] text-muted uppercase">
+                    {row.specialty}
+                  </p>
+                  <h3 className="mt-1 font-medium">{row.name}</h3>
+                  <p className="mt-2 text-sm text-ink-2">{row.description}</p>
 
-      <h2 className="mt-16 border-b border-line pb-2 font-mono text-xs tracking-[0.14em] text-muted uppercase">
-        Services
-      </h2>
-      <ul className="mt-4 divide-y divide-line">
-        {services.map((service) => (
-          <li key={service.id} className="flex gap-6 py-3">
-            <div className="flex-1">
-              <h3 className="font-medium">{service.name}</h3>
-              <p className="mt-1 text-sm text-ink-2">{service.description}</p>
-            </div>
-            <div className="tabular w-28 shrink-0 text-right text-sm text-ink-2">
-              <div>{formatPrice(service.pricePence)}</div>
-              <div className="text-muted">{formatDuration(service.defaultDurationMinutes)}</div>
-            </div>
-          </li>
-        ))}
-      </ul>
+                  {/*
+                    The two facts a patient actually needs, held at the foot of
+                    every card so they line up across the row however long the
+                    descriptions above them run.
+                  */}
+                  <p className="tabular mt-auto border-t border-line pt-3 text-sm">
+                    {formatDurationShort(row.defaultDurationMinutes)}
+                    {/* Spoken as a comma, drawn as a middot. */}
+                    <span className="sr-only">, </span>
+                    <span className="mx-2 text-muted" aria-hidden="true">
+                      ·
+                    </span>
+                    {formatPrice(row.pricePence)}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
 
-      <h2 className="mt-12 border-b border-line pb-2 font-mono text-xs tracking-[0.14em] text-muted uppercase">
-        Practitioners
-      </h2>
-      <ul className="mt-4 divide-y divide-line">
-        {practitioners.map((person) => (
-          <li key={person.id} className="py-3">
-            <h3 className="font-medium">
-              {person.name}
-              <span className="ml-2 font-normal text-muted">{person.title}</span>
-            </h3>
-            <p className="mt-1 max-w-2xl text-sm text-ink-2">{person.bio}</p>
-          </li>
-        ))}
-      </ul>
+          <p className="mt-3 text-sm text-muted">
+            Lengths and prices are the standard ones. Both can differ by practitioner — an
+            initial assessment takes Tomas an hour where it takes Nadia forty-five minutes —
+            and the next step shows what it is with each of them.
+          </p>
+        </section>
 
-      <p className="mt-12 text-sm text-muted">
-        Meridian is a fictional clinic, built as a demonstration of a booking system. The
-        appointments are not real and nobody is expecting you.
-      </p>
-    </main>
+        <section aria-labelledby="practitioners-heading" className="mt-10">
+          <h2
+            id="practitioners-heading"
+            className="font-mono text-xs tracking-[0.14em] text-muted uppercase"
+          >
+            Practitioners
+          </h2>
+
+          <PractitionerDirectory
+            today={today()}
+            specialties={specialties}
+            practitioners={practitioners.map((person) => ({
+              id: person.id,
+              name: person.name,
+              slug: person.slug,
+              title: person.title,
+              bio: person.bio,
+              specialties: person.specialties,
+              next: next[person.id],
+            }))}
+          />
+        </section>
+
+        <p className="mt-10 border-t border-line pt-6 text-sm text-muted">
+          Meridian is an invented clinic, built to demonstrate a booking system. The
+          practitioners are fictional, the appointments are not real, and nobody is
+          expecting you.
+        </p>
+      </main>
+    </>
   )
 }

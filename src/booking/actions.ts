@@ -1,9 +1,10 @@
 'use server'
 
 import {eq} from 'drizzle-orm'
-import {revalidatePath} from 'next/cache'
+import {revalidatePath, updateTag} from 'next/cache'
 import {redirect} from 'next/navigation'
 
+import {AVAILABILITY_TAG} from '../availability/next-available.ts'
 import {
   availabilityFor,
   getServiceBySlug,
@@ -113,6 +114,14 @@ export async function createBookingAction(
     )
   }
 
+  // The directory's "next available" hint is now one appointment out of date.
+  // `updateTag` rather than `revalidateTag`: this is a Server Action, and the
+  // person is about to be redirected to a page rendered in the same pass, so
+  // the cache has to be gone now rather than merely marked stale. Waiting out
+  // the sixty-second window would leave a homepage that contradicts the diary
+  // it just wrote to.
+  updateTag(AVAILABILITY_TAG)
+
   // The appointment is committed. Everything from here is best effort, and
   // none of it is allowed to change that -- if Resend has a bad minute the
   // person still has their slot, and the confirmation page says the email did
@@ -168,6 +177,9 @@ export async function cancelBookingAction(
     return {error: CANCEL_MESSAGES[result.reason] ?? 'That could not be cancelled.', reason}
   }
 
+  // A cancellation frees a slot, which can only make the directory's hint
+  // earlier. Same tag, same reason.
+  updateTag(AVAILABILITY_TAG)
   revalidatePath(`/booking/${reference}`)
   return {}
 }

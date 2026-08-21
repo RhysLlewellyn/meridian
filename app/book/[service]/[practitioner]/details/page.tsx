@@ -7,7 +7,7 @@ import {
   listPractitionersForService,
 } from '../../../../../src/availability/query.ts'
 import {getDb} from '../../../../../src/db/index.ts'
-import {formatDate, formatDuration, formatPrice} from '../../../../../src/format.ts'
+import {BookingFrame} from '../../../BookingFrame.tsx'
 import {DetailsForm} from './DetailsForm.tsx'
 
 export const dynamic = 'force-dynamic'
@@ -42,44 +42,27 @@ export default async function Details({params, searchParams}: Props) {
   }
 
   return (
-    <main>
-      <p className="mt-6">
+    <BookingFrame
+      step={4}
+      selection={{
+        service: {name: service.name, slug: service.slug, specialty: service.specialty},
+        practitioner: {name: practitioner.name, title: practitioner.title},
+        when: {date, time},
+        durationMinutes: practitioner.durationMinutes,
+        pricePence: practitioner.pricePence,
+      }}
+    >
+      <h1 className="text-xl font-medium">Your details</h1>
+      <p className="mt-1 text-ink-2">
+        The panel has what you have chosen.{' '}
         <Link
           href={`/book/${service.slug}/${practitionerSlug}?date=${date}`}
-          className="text-sm text-muted underline underline-offset-4"
+          className="underline underline-offset-4"
         >
-          Change time
-        </Link>
+          Change the time
+        </Link>{' '}
+        if it is not right.
       </p>
-
-      <h1 className="mt-2 text-2xl font-medium">Your details</h1>
-
-      <dl className="mt-6 border-y border-line py-4 text-sm">
-        <div className="flex gap-4 py-1">
-          <dt className="w-32 shrink-0 text-muted">Appointment</dt>
-          <dd>{service.name}</dd>
-        </div>
-        <div className="flex gap-4 py-1">
-          <dt className="w-32 shrink-0 text-muted">With</dt>
-          <dd>
-            {practitioner.name}, {practitioner.title}
-          </dd>
-        </div>
-        <div className="flex gap-4 py-1">
-          <dt className="w-32 shrink-0 text-muted">When</dt>
-          <dd className="tabular">
-            {formatDate(date)} at {time}
-          </dd>
-        </div>
-        <div className="flex gap-4 py-1">
-          <dt className="w-32 shrink-0 text-muted">Length</dt>
-          <dd className="tabular">{formatDuration(practitioner.durationMinutes)}</dd>
-        </div>
-        <div className="flex gap-4 py-1">
-          <dt className="w-32 shrink-0 text-muted">Price</dt>
-          <dd className="tabular">{formatPrice(practitioner.pricePence)}</dd>
-        </div>
-      </dl>
 
       <DetailsForm
         service={service.slug}
@@ -87,6 +70,6 @@ export default async function Details({params, searchParams}: Props) {
         date={date}
         time={time}
       />
-    </main>
+    </BookingFrame>
   )
 }

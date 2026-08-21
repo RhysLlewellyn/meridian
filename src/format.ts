@@ -3,7 +3,7 @@
  * UK reads without translating.
  */
 
-import {parseCalendarDate, type CalendarDate} from './availability/time.ts'
+import {parseCalendarDate, shiftDate, type CalendarDate} from './availability/time.ts'
 
 /**
  * A calendar date is formatted from midday UTC, not from midnight.
@@ -72,3 +72,32 @@ export function formatDuration(minutes: number): string {
   if (rest > 0) parts.push(rest === 1 ? '1 minute' : `${rest} minutes`)
   return parts.join(' ') || '0 minutes'
 }
+
+/** `45 min`. Compact, for a card where the number matters more than the word. */
+export function formatDurationShort(minutes: number): string {
+  if (minutes < 120) return `${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return rest === 0 ? `${hours} hr` : `${hours} hr ${rest} min`
+}
+
+/**
+ * `Today`, `Tomorrow`, or `Thu, 22 Aug`.
+ *
+ * Both dates are calendar dates in the clinic's timezone, so the comparison is
+ * a string comparison and no instant is involved. "Today" is a fact about the
+ * wall calendar, and computing it from a subtraction of instants is how a
+ * booking at 00:30 ends up labelled yesterday.
+ */
+export function formatRelativeDay(iso: string, today: string): string {
+  if (iso === today) return 'Today'
+  if (iso === shiftDate(today, 1)) return 'Tomorrow'
+  return shortDateComma.format(noonOf(parseCalendarDate(iso)))
+}
+
+const shortDateComma = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'UTC',
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+})

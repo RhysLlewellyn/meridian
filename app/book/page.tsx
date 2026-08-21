@@ -3,7 +3,8 @@ import Link from 'next/link'
 
 import {listServices} from '../../src/availability/query.ts'
 import {getDb} from '../../src/db/index.ts'
-import {formatDuration, formatPrice} from '../../src/format.ts'
+import {formatDurationShort, formatPrice} from '../../src/format.ts'
+import {BookingFrame} from './BookingFrame.tsx'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,33 +14,37 @@ export default async function ChooseService() {
   const services = await listServices(getDb())
 
   return (
-    <main>
-      <h1 className="mt-6 text-2xl font-medium">Choose a service</h1>
-      <p className="mt-2 text-ink-2">
+    <BookingFrame step={1} selection={{}}>
+      <h1 className="text-xl font-medium">Choose a service</h1>
+      <p className="mt-1 text-ink-2">
         Not sure? An initial assessment is the right first appointment for anything new.
       </p>
 
-      <ul className="mt-8 border-t border-line">
+      <ul className="mt-5 grid gap-px border border-line bg-line sm:grid-cols-2">
         {services.map((service) => (
-          <li key={service.id} className="border-b border-line">
+          <li key={service.id} className="bg-surface">
             <Link
               href={`/book/${service.slug}`}
-              className="flex gap-6 py-4 transition-colors duration-[120ms] hover:bg-surface-2"
+              className="flex h-full flex-col p-4 transition-colors duration-[120ms] hover:bg-surface-2"
             >
-              <div className="flex-1">
-                <h2 className="font-medium">{service.name}</h2>
-                <p className="mt-1 text-sm text-ink-2">{service.description}</p>
-              </div>
-              <div className="tabular w-28 shrink-0 text-right text-sm text-ink-2">
-                <div>{formatPrice(service.pricePence)}</div>
-                <div className="text-muted">
-                  {formatDuration(service.defaultDurationMinutes)}
-                </div>
-              </div>
+              <p className="font-mono text-xs tracking-[0.14em] text-muted uppercase">
+                {service.specialty}
+              </p>
+              <h2 className="mt-1 font-medium">{service.name}</h2>
+              <p className="mt-2 text-sm text-ink-2">{service.description}</p>
+              <p className="tabular mt-auto border-t border-line pt-3 text-sm">
+                {formatDurationShort(service.defaultDurationMinutes)}
+                {/* Spoken as a comma, drawn as a middot. */}
+                <span className="sr-only">, </span>
+                <span className="mx-2 text-muted" aria-hidden="true">
+                  ·
+                </span>
+                {formatPrice(service.pricePence)}
+              </p>
             </Link>
           </li>
         ))}
       </ul>
-    </main>
+    </BookingFrame>
   )
 }

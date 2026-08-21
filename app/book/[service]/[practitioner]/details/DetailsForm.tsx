@@ -24,7 +24,7 @@ export function DetailsForm({service, practitioner, date, time}: Props) {
   const [state, action, pending] = useActionState(createBookingAction, EMPTY)
 
   return (
-    <form action={action} className="mt-6 max-w-md">
+    <form action={action} className="mt-6">
       {/* The chosen appointment travels with the form as well as in the URL. */}
       <input type="hidden" name="service" value={service} />
       <input type="hidden" name="practitioner" value={practitioner} />

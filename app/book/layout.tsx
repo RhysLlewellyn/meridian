@@ -1,21 +1,19 @@
-import Link from 'next/link'
+import {SiteHeader} from '../SiteHeader.tsx'
 
 /**
- * The shell every booking step sits in.
+ * The shell every booking route sits in — the site header and nothing else.
  *
- * No step indicator with ticks and a progress bar. The steps are four short
- * pages and the browser already has a back button; the heading of each page
- * says where you are.
+ * The step indicator and the summary panel live in `BookingFrame`, which the
+ * four steps render themselves, because a layout in the App Router is not
+ * given the URL's search parameters and the panel's whole job is to show what
+ * they contain. The confirmation page shares this header and skips the frame:
+ * it is the end of the task, not a step in it.
  */
 export default function BookLayout({children}: {children: React.ReactNode}) {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
-      <p className="font-mono text-xs tracking-[0.14em] text-muted uppercase">
-        <Link href="/" className="underline underline-offset-4 hover:text-ink">
-          Meridian
-        </Link>
-      </p>
+    <>
+      <SiteHeader current="book" />
       {children}
-    </div>
+    </>
   )
 }

@@ -20,12 +20,12 @@ export function CancelForm({reference}: {reference: string}) {
   const [state, action, pending] = useActionState(cancelBookingAction, EMPTY)
 
   return (
-    <details open={Boolean(state.error)} className="mt-8 max-w-md border border-line">
-      <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-danger">
+    <details open={Boolean(state.error)} className="mt-3 border border-line">
+      <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-danger">
         Cancel this appointment
       </summary>
 
-      <form action={action} className="border-t border-line p-4">
+      <form action={action} className="border-t border-line p-3">
         <input type="hidden" name="reference" value={reference} />
 
         <p className="text-sm text-ink-2">
