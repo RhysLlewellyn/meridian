@@ -20,9 +20,9 @@ export default async function ChooseService() {
         Not sure? An initial assessment is the right first appointment for anything new.
       </p>
 
-      <ul className="mt-5 grid gap-px border border-line bg-line sm:grid-cols-2">
+      <ul className="mt-5 grid border-t border-l border-line sm:grid-cols-2">
         {services.map((service) => (
-          <li key={service.id} className="bg-surface">
+          <li key={service.id} className="border-r border-b border-line">
             <Link
               href={`/book/${service.slug}`}
               className="flex h-full flex-col p-4 transition-colors duration-[120ms] hover:bg-surface-2"

@@ -448,7 +448,7 @@ describe('times that exist but cannot be booked', () => {
 
     const unavailable = result.unavailable.map((slot) => slot.time)
     expect(unavailable).toEqual(['08:30', '08:45', '09:00', '09:15', '09:30'])
-    expect(result.unavailable.every((slot) => slot.reason === 'booked')).toBe(true)
+    expect(result.unavailable.every((slot) => slot.reason === 'taken')).toBe(true)
 
     // Outside the working day is not a blocked time, it is no time at all.
     expect(unavailable).not.toContain('07:45')
@@ -484,7 +484,7 @@ describe('times that exist but cannot be booked', () => {
     // close, and it is on Tomas's grid but inside his booking. Neither fact
     // alone makes the time unbookable.
     expect(result.unavailable.map((s) => s.time)).toEqual(['15:45'])
-    expect(result.unavailable[0]?.reason).toBe('booked')
+    expect(result.unavailable[0]?.reason).toBe('taken')
 
     // His booking ends at 16:00 London, and the bound is half-open, so the
     // clinic is open again at exactly 16:00.

@@ -33,7 +33,7 @@
  * results are unioned, each slot carrying whoever is free for it.
  *
  * It also reports the times that exist on the grid but cannot be booked, which
- * is not the same question and is the one the interface needs. "Booked" and
+ * is not the same question and is the one the interface needs. "Taken" and
  * "outside working hours" are different facts, and a grid that shows only what
  * is free collapses them into one silence: a screen reader user tabbing
  * through six buttons cannot tell a busy Tuesday from a short one. So the
@@ -138,13 +138,21 @@ export type Slot = {
 /**
  * Why a grid position exists but cannot be taken.
  *
+ * `taken` covers an existing booking and a period of leave alike, and the
+ * engine could not tell them apart if it wanted to — both mean the same thing
+ * to it, which is that this practitioner is not free between these two
+ * instants. That turns out to be the right thing to show as well: a patient
+ * does not need to know whether the physiotherapist is with somebody else or
+ * on a course, and a grid that said "Booked" over a study day would be
+ * volunteering a fact about a colleague's diary that happened to be untrue.
+ *
  * There is deliberately no reason for "outside working hours", because such a
  * position is not on the grid at all. That distinction is the whole point:
- * 16:00 on a Thursday being *booked* and 16:00 on a Friday not *existing* are
+ * 16:00 on a Thursday being taken and 16:00 on a Friday not existing are
  * different answers to "can I come in then?", and only one of them is worth
  * rendering.
  */
-export type UnavailableReason = 'booked' | 'too_soon'
+export type UnavailableReason = 'taken' | 'too_soon'
 
 export type UnavailableSlot = {
   startsAt: Date
@@ -197,7 +205,7 @@ export function getAvailability(query: AvailabilityQuery): Availability {
    * grid a person reads is one row of times, not three overlaid diaries. The
    * first reason recorded for a time wins, which needs no precedence rule
    * because the only reason that can differ between two practitioners is
-   * `booked` — lead time is a property of the clock and blocks everybody at
+   * `taken` — lead time is a property of the clock and blocks everybody at
    * once.
    */
   const blocked = new Map<string, UnavailableSlot>()
@@ -240,7 +248,7 @@ export function getAvailability(query: AvailabilityQuery): Availability {
         }
 
         if (busy.some((interval) => overlaps({startsAt: start, endsAt: end}, interval))) {
-          block(start, time, 'booked')
+          block(start, time, 'taken')
           continue
         }
 

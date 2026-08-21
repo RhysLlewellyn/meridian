@@ -55,9 +55,9 @@ export default async function Home() {
             Appointments
           </h2>
 
-          <ul className="mt-4 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-4 grid border-t border-l border-line sm:grid-cols-2 lg:grid-cols-3">
             {services.map((row) => (
-              <li key={row.id} className="bg-surface">
+              <li key={row.id} className="border-r border-b border-line">
                 <Link
                   href={`/book/${row.slug}`}
                   className="flex h-full flex-col p-4 transition-colors duration-[120ms] hover:bg-surface-2"

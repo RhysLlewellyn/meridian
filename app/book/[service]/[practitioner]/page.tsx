@@ -168,12 +168,17 @@ export default async function ChooseTime({params, searchParams}: Props) {
             date={date}
             anyPractitioner={anyPractitioner}
             slots={slots.map((slot) => ({
+              id: `${slot.practitionerId}-${slot.time}`,
               time: slot.time,
               practitionerName: slot.practitionerName,
               durationMinutes: slot.durationMinutes,
               action: `${detailsBase}/${slugById.get(slot.practitionerId) ?? ANY}/details`,
             }))}
-            blocked={unavailable.map((slot) => ({time: slot.time, reason: slot.reason}))}
+            blocked={unavailable.map((slot) => ({
+              id: `blocked-${slot.time}`,
+              time: slot.time,
+              reason: slot.reason,
+            }))}
           />
         </form>
       )}

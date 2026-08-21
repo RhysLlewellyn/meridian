@@ -39,6 +39,12 @@ import {formatDate, formatDuration} from '../../src/format.ts'
  */
 
 export type GridSlot = {
+  /**
+   * Unique across the grid, which the time alone is not: with "any
+   * practitioner" the same 10:00 can be free with two people, and both are
+   * offered as separate appointments.
+   */
+  id: string
   time: string
   practitionerName: string
   durationMinutes: number
@@ -47,8 +53,9 @@ export type GridSlot = {
 }
 
 export type GridBlocked = {
+  id: string
   time: string
-  reason: 'booked' | 'too_soon'
+  reason: 'taken' | 'too_soon'
 }
 
 type Props = {
@@ -109,7 +116,7 @@ export function SlotGrid({date, anyPractitioner, slots, blocked}: Props) {
 
         if (cell.kind === 'blocked') {
           return (
-            <li key={cell.time}>
+            <li key={cell.id}>
               <button
                 // Not `disabled`: it would leave the tab order and take the
                 // fact that this time exists with it.
@@ -123,13 +130,18 @@ export function SlotGrid({date, anyPractitioner, slots, blocked}: Props) {
                 className={`${shared} cursor-not-allowed border-line bg-surface-2 text-muted`}
               >
                 <span className="block font-medium line-through">{cell.time}</span>
+                {/*
+                  "Unavailable", not "Booked". The engine cannot tell a
+                  booking from a study day, and the clinic should not be
+                  telling patients which it is either.
+                */}
                 <span className="block text-xs">
-                  {cell.reason === 'booked' ? 'Booked' : 'Too soon'}
+                  {cell.reason === 'taken' ? 'Unavailable' : 'Too soon'}
                 </span>
                 <span className="sr-only">
                   {when}
-                  {cell.reason === 'booked'
-                    ? ', already booked'
+                  {cell.reason === 'taken'
+                    ? ', not available'
                     : ', too soon to book — appointments open two hours ahead'}
                 </span>
               </button>
@@ -137,10 +149,10 @@ export function SlotGrid({date, anyPractitioner, slots, blocked}: Props) {
           )
         }
 
-        const selected = chosen === cell.time
+        const selected = chosen === cell.id
 
         return (
-          <li key={cell.time}>
+          <li key={cell.id}>
             <button
               type="submit"
               name="time"
@@ -151,7 +163,7 @@ export function SlotGrid({date, anyPractitioner, slots, blocked}: Props) {
               }}
               tabIndex={index === focused ? 0 : -1}
               onFocus={() => setFocused(index)}
-              onClick={() => setChosen(cell.time)}
+              onClick={() => setChosen(cell.id)}
               aria-pressed={selected || undefined}
               className={`${shared} ${
                 selected

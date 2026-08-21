@@ -109,9 +109,9 @@ export function PractitionerDirectory({practitioners, specialties, today}: Props
           No practitioners match that. Clear the search, or choose “All practitioners”.
         </p>
       ) : (
-        <ul className="mt-4 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-4 grid border-t border-l border-line sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((person) => (
-            <li key={person.id} className="flex flex-col bg-surface p-4">
+            <li key={person.id} className="flex flex-col border-r border-b border-line p-4">
               <div className="flex items-start gap-3">
                 {/*
                   Initials, not a photograph. There is no real Nadia Okafor,
