@@ -19,17 +19,26 @@ migrations checked in · Tailwind v4 · Vitest · Resend for the confirmation em
 
 ## Lighthouse
 
-Lighthouse 13.4.1, mobile, run against the deployed URL rather than a local build.
+Lighthouse 13.4.1, mobile preset, run against the deployed URL rather than a local build.
+Median of three runs per page, because a single run moves a point or two between them.
 
-| | Performance | Accessibility | Best practices | SEO |
-|---|---|---|---|---|
-| `/` — the clinic | **100** | **100** | **100** | **100** |
-| `/book/initial-assessment/any` — the booking grid | **99** | **100** | **100** | **100** |
+| | Performance | Accessibility | Best practices | SEO | Agentic Browsing |
+|---|---|---|---|---|---|
+| `/` — the clinic | **100** | **100** | **100** | **100** | **100** |
+| `/book/initial-assessment/any` — the booking grid | **100** | **100** | **100** | **100** | **100** |
 
-Lighthouse dropped the PWA category in version 12, so there are four rather than the five the
-brief asked for. LCP is 0.9 s on the homepage and 2.0 s on the grid; CLS is 0 on both. Every
-page that touches the database is rendered per request — there is no static cache doing the
-work here.
+LCP is 1.3 s on the homepage and 1.5 s on the grid, CLS is 0 on both, and TBT is 25 ms and
+14 ms. Every page that touches the database is rendered per request — there is no static
+cache doing that work.
+
+Agentic Browsing is the fifth category in Lighthouse 13, replacing PWA. It scores what an
+agent rather than a person can make of the page: the accessibility tree it would have to
+navigate, layout stability, and whether the site publishes an
+[llms.txt](https://meridian-rhys-llewellyn1.vercel.app/llms.txt). Meridian's carries the
+service list out of the database rather than a hand-written summary that would drift the
+first time a price changed, and its first paragraph says the clinic is invented — an agent
+acting for somebody who actually needs a physiotherapist should be able to tell in one line
+and stop.
 
 ---
 
@@ -176,7 +185,7 @@ The whole flow works with JavaScript off. Each slot is a submit button with a `f
 selection is an ordinary navigation to a URL that carries the choice; the client component adds
 the arrow keys and an optimistic fill on top of that rather than replacing it.
 
-`tools/a11y-sweep.mjs` is the mechanical half of the pass. It drives headless Chrome over the
+`tools/a11y-sweep.mjs` is the first mechanical half of the pass. It drives headless Chrome over the
 DevTools protocol, tabs each page the way a keyboard user would, and reads accessible names out
 of Chrome's own accessibility tree rather than guessing from `textContent` — those two disagree
 exactly around visually-hidden spans and block children, which is precisely how the slot buttons
@@ -184,12 +193,19 @@ are built. Current run over six pages: no axe violations, no unnamed tab stop, n
 without a focus ring, no target under 24px, one tab stop per grid, and a skip link that moves
 focus into `<main>` rather than merely scrolling to it.
 
-**What has not happened: the NVDA pass.** The brief asks for the site to be listened to with a
-screen reader, and that is a person sitting down with headphones for twenty minutes, not a
-script. The mechanical sweep above is what makes that pass short and aimed — it answers the
-yes/no questions so the listening goes on the parts that need ears — but it is not a substitute
-and I am not going to claim it is. Booking end to end without a mouse has been verified; hearing
-it has not.
+`tools/nvda-pass.ps1` is the second. It starts NVDA against a scratch profile with the
+`silence` synth, so every utterance is logged at DEBUG level without being spoken aloud, and
+drives the page with `SendKeys` rather than through the DevTools protocol — CDP-synthesised
+keys bypass the OS keyboard hook entirely, browse mode never engages, and a CDP-driven "NVDA
+test" ends up testing something else. It refuses to run if Chrome cannot take the foreground,
+because NVDA reads the focused window and a backgrounded run produces an empty transcript that
+looks exactly like a pass.
+
+**What has not happened: listening to it.** The harness above captures what NVDA says; it does
+not replace a person sitting down with headphones for twenty minutes and noticing that
+something announced correctly is still confusing. Booking end to end without a mouse has been
+verified — keyboard only, in a real browser, including arrow-keying across the slot grid.
+Hearing it has not.
 
 ---
 
@@ -238,6 +254,7 @@ npm run dev                   # http://localhost:3002
 ```bash
 npm test                              # 59 tests; 18 of them need the database
 node tools/a11y-sweep.mjs             # keyboard and accessibility-tree sweep
+pwsh tools/nvda-pass.ps1              # captures what NVDA actually says (Windows)
 node tools/screenshots.mjs            # regenerates docs/
 ```
 
