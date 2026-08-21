@@ -12,7 +12,9 @@ import {
 } from '../../../../src/availability/query.ts'
 import {shiftDate} from '../../../../src/availability/time.ts'
 import {getDb} from '../../../../src/db/index.ts'
-import {formatDate, formatDateShort, formatDuration} from '../../../../src/format.ts'
+import {formatDate, formatDateShort} from '../../../../src/format.ts'
+import {BookingFrame} from '../../BookingFrame.tsx'
+import {SlotGrid} from '../../SlotGrid.tsx'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,35 +49,43 @@ export default async function ChooseTime({params, searchParams}: Props) {
   // today rather than an error page.
   const date = dateParam && DATE_PATTERN.test(dateParam) ? dateParam : today(now)
 
-  const {slots} = await availabilityFor(db, service, practitionerSlug, date, now)
+  const {slots, unavailable} = await availabilityFor(db, service, practitionerSlug, date, now)
 
   const chosen = offering.find((p) => p.slug === practitionerSlug)
   const detailsBase = `/book/${service.slug}`
+  const anyPractitioner = practitionerSlug === ANY
 
   const earliest = today(now)
   const latest = shiftDate(earliest, HORIZON_DAYS)
   const previous = shiftDate(date, -1)
   const next = shiftDate(date, 1)
 
-  return (
-    <main>
-      <p className="mt-6">
-        <Link
-          href={`/book/${service.slug}`}
-          className="text-sm text-muted underline underline-offset-4"
-        >
-          Change practitioner
-        </Link>
-      </p>
+  const slugById = new Map(offering.map((p) => [p.id, p.slug]))
 
-      <h1 className="mt-2 text-2xl font-medium">{service.name}</h1>
-      <p className="mt-2 text-ink-2">
+  return (
+    <BookingFrame
+      step={3}
+      selection={{
+        service: {name: service.name, slug: service.slug, specialty: service.specialty},
+        practitioner: chosen
+          ? {name: chosen.name, title: chosen.title}
+          : anyPractitioner
+            ? 'any'
+            : undefined,
+        durationMinutes: chosen?.durationMinutes,
+        pricePence: chosen?.pricePence,
+      }}
+    >
+      <h1 className="text-xl font-medium">Choose a date and time</h1>
+      <p className="mt-1 text-ink-2">
         {chosen ? (
           <>
-            With {chosen.name}, {formatDuration(chosen.durationMinutes)}.
+            {service.name} with {chosen.name}.
           </>
         ) : (
-          <>Any practitioner. Appointment length depends on who you see.</>
+          <>
+            {service.name}, any practitioner. Appointment length depends on who you see.
+          </>
         )}
       </p>
 
@@ -84,16 +94,14 @@ export default async function ChooseTime({params, searchParams}: Props) {
         // and note that the grid below no longer has it.
         <p
           role="alert"
-          className="mt-6 border-2 border-danger px-4 py-3 text-sm text-danger"
+          className="mt-5 border-2 border-danger px-4 py-3 text-sm text-danger"
         >
           <strong className="font-medium">{taken} has just been booked</strong> by somebody
           else. It has been removed below — please choose another time.
         </p>
       ) : null}
 
-      <h2 className="mt-8 text-lg font-medium">Choose a date and time</h2>
-
-      <div className="mt-4 flex flex-wrap items-center gap-3 border-y border-line py-3">
+      <div className="mt-5 flex flex-wrap items-center gap-3 border-y border-line py-3">
         <DayStep
           href={`${detailsBase}/${practitionerSlug}?date=${previous}`}
           label={`← ${formatDateShort(previous)}`}
@@ -137,59 +145,39 @@ export default async function ChooseTime({params, searchParams}: Props) {
         {slots.length === 0
           ? `No appointments available on ${formatDate(date)}.`
           : `${slots.length} appointment${slots.length === 1 ? '' : 's'} available on ${formatDate(date)}.`}
+        {unavailable.length > 0
+          ? ` ${unavailable.length} other time${unavailable.length === 1 ? '' : 's'} shown as unavailable.`
+          : ''}
       </p>
 
-      {slots.length === 0 ? (
+      {slots.length === 0 && unavailable.length === 0 ? (
         <p className="mt-2 text-sm text-muted">
-          Try another date. Appointments open two hours ahead and up to {HORIZON_DAYS} days
-          out.
+          The clinic is closed on this day for this appointment. Try another date —
+          appointments open two hours ahead and up to {HORIZON_DAYS} days out.
         </p>
       ) : (
-        // One form, one submit button per slot. `formaction` puts the chosen
-        // practitioner in the path, so the URL that results is the same shape
-        // whether they picked a person or "no preference" — and it is a real
-        // link somebody can send to somebody else.
-        <form method="get" className="mt-4">
+        // One form, one submit button per bookable slot. `formaction` puts the
+        // chosen practitioner in the path, so the URL that results is the same
+        // shape whether they picked a person or "no preference" — and it is a
+        // real link somebody can send to somebody else. The grid enhances this
+        // with arrow keys and an optimistic fill; without JavaScript it stays
+        // an ordinary form that navigates.
+        <form method="get">
           <input type="hidden" name="date" value={date} />
-          <ul className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-2">
-            {slots.map((slot) => (
-              <li key={`${slot.practitionerId}-${slot.time}`}>
-                <button
-                  type="submit"
-                  name="time"
-                  value={slot.time}
-                  formAction={`${detailsBase}/${slotSlug(offering, slot.practitionerId)}/details`}
-                  className="tabular w-full border border-line bg-surface px-3 py-2 text-left transition-colors duration-[120ms] hover:border-accent hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                >
-                  {/*
-                    The accessible name is built from content rather than an
-                    aria-label, and the hidden half comes last. WCAG 2.5.3
-                    (Label in Name) wants the visible text to appear inside the
-                    accessible name, and an aria-label that reordered the same
-                    facts -- "09:15, Tuesday 25 August, 45 minutes, with Nadia
-                    Okafor" against visible "09:15 Nadia Okafor" -- fails it,
-                    which breaks anybody driving the page by voice. Appending
-                    instead keeps the visible text a prefix of the spoken one,
-                    and a slot still reads sensibly out of context.
-                  */}
-                  <span className="block font-medium">{slot.time}</span>
-                  <span className="block text-xs text-muted">
-                    {practitionerSlug === ANY
-                      ? slot.practitionerName
-                      : formatDuration(slot.durationMinutes)}
-                  </span>
-                  <span className="sr-only">
-                    {practitionerSlug === ANY
-                      ? `, ${formatDuration(slot.durationMinutes)}, ${formatDate(date)}`
-                      : `, with ${slot.practitionerName}, ${formatDate(date)}`}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <SlotGrid
+            date={date}
+            anyPractitioner={anyPractitioner}
+            slots={slots.map((slot) => ({
+              time: slot.time,
+              practitionerName: slot.practitionerName,
+              durationMinutes: slot.durationMinutes,
+              action: `${detailsBase}/${slugById.get(slot.practitionerId) ?? ANY}/details`,
+            }))}
+            blocked={unavailable.map((slot) => ({time: slot.time, reason: slot.reason}))}
+          />
         </form>
       )}
-    </main>
+    </BookingFrame>
   )
 }
 
@@ -213,12 +201,4 @@ function DayStep({href, label, disabled}: {href: string; label: string; disabled
       {label}
     </Link>
   )
-}
-
-/** The slug for whoever a slot belongs to, for the URL it submits to. */
-function slotSlug(
-  offering: {id: string; slug: string}[],
-  practitionerId: string,
-): string {
-  return offering.find((p) => p.id === practitionerId)?.slug ?? ANY
 }

@@ -61,7 +61,7 @@ export async function StaffSchedule({practitionerSlug, date: dateParam, open}: P
     <div className="flex min-h-screen">
       <StaffNav />
 
-      <main className="min-w-0 flex-1 px-6 py-6">
+      <main id="main" tabIndex={-1} className="focus:outline-none min-w-0 flex-1 px-6 py-6">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h1 className="text-xl font-medium">Schedule</h1>
           <p className="tabular text-sm text-muted">{formatDate(date)}</p>
@@ -350,7 +350,7 @@ function StaffNav() {
         Schedule only in this demo. The other three are not built.
       </p>
       <p className="mt-6 px-2 text-xs">
-        <Link href="/" className="underline underline-offset-4">
+        <Link href="/" className="inline-block py-1.5 underline underline-offset-4">
           Public site
         </Link>
       </p>
