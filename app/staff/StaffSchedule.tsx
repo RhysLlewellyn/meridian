@@ -58,10 +58,19 @@ export async function StaffSchedule({practitionerSlug, date: dateParam, open}: P
   }
 
   return (
-    <div className="flex min-h-screen">
+    /*
+      A fixed 11rem sidebar is right at a desk and wrong on a phone, where it
+      was taking nearly half the viewport and squeezing the table off the
+      right-hand edge. It becomes a bar across the top below `lg`.
+    */
+    <div className="flex min-h-screen flex-col lg:flex-row">
       <StaffNav />
 
-      <main id="main" tabIndex={-1} className="focus:outline-none min-w-0 flex-1 px-6 py-6">
+      <main
+        id="main"
+        tabIndex={-1}
+        className="focus:outline-none min-w-0 flex-1 px-4 py-5 sm:px-6 sm:py-6"
+      >
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h1 className="text-xl font-medium">Schedule</h1>
           <p className="tabular text-sm text-muted">{formatDate(date)}</p>
@@ -138,7 +147,15 @@ export async function StaffSchedule({practitionerSlug, date: dateParam, open}: P
             Nothing booked on {formatDate(date)}.
           </p>
         ) : (
-          <table className="mt-4 w-full border-collapse text-sm">
+          /*
+            Wide content scrolls inside its own container. A table of five
+            columns cannot fit a 390px viewport at a readable size, and the
+            alternative -- letting the document scroll sideways -- hides the
+            status and the row link off the right-hand edge with nothing to
+            say they are there.
+          */
+          <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[34rem] border-collapse text-sm">
             <caption className="sr-only">
               Appointments on {formatDate(date)}, earliest first
             </caption>
@@ -187,7 +204,7 @@ export async function StaffSchedule({practitionerSlug, date: dateParam, open}: P
                           ? href({})
                           : href({booking: row.reference})
                       }
-                      className="underline underline-offset-4"
+                      className="inline-block px-1 py-1.5 underline underline-offset-4"
                     >
                       {row.reference === selected?.reference ? 'Close' : 'Open'}
                       <span className="sr-only"> {row.reference}</span>
@@ -197,6 +214,7 @@ export async function StaffSchedule({practitionerSlug, date: dateParam, open}: P
               ))}
             </tbody>
           </table>
+          </div>
         )}
 
         {selected ? <DetailPanel booking={selected} closeHref={href({})} /> : null}
@@ -326,16 +344,16 @@ function StaffNav() {
   return (
     <nav
       aria-label="Staff sections"
-      className="w-44 shrink-0 border-r border-line bg-surface-2 px-3 py-6"
+      className="shrink-0 border-b border-line bg-surface-2 px-3 py-3 lg:w-44 lg:border-r lg:border-b-0 lg:py-6"
     >
       <p className="px-2 font-mono text-xs tracking-[0.14em] text-muted uppercase">
         Meridian
       </p>
-      <ul className="mt-6 space-y-1 text-sm">
+      <ul className="mt-3 flex flex-wrap gap-x-1 text-sm lg:mt-6 lg:block lg:space-y-1">
         <li>
           <span
             aria-current="page"
-            className="block border-l-2 border-accent bg-surface px-2 py-1.5 font-medium"
+            className="block border-b-2 border-accent bg-surface px-2 py-1.5 font-medium lg:border-b-0 lg:border-l-2"
           >
             Schedule
           </span>
@@ -346,10 +364,10 @@ function StaffNav() {
           </li>
         ))}
       </ul>
-      <p className="mt-6 px-2 text-xs text-muted">
+      <p className="mt-3 px-2 text-xs text-muted lg:mt-6">
         Schedule only in this demo. The other three are not built.
       </p>
-      <p className="mt-6 px-2 text-xs">
+      <p className="mt-3 px-2 text-xs lg:mt-6">
         <Link href="/" className="inline-block py-1.5 underline underline-offset-4">
           Public site
         </Link>

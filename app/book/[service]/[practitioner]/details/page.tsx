@@ -53,8 +53,13 @@ export default async function Details({params, searchParams}: Props) {
       }}
     >
       <h1 className="text-xl font-medium">Your details</h1>
+      {/*
+        Position-neutral on purpose. The summary sits beside this form on a
+        laptop and beneath it on a phone, and copy that says "the panel on the
+        right" is wrong for half the people reading it.
+      */}
       <p className="mt-1 text-ink-2">
-        The panel has what you have chosen.{' '}
+        Your appointment is summarised with this form.{' '}
         <Link
           href={`/book/${service.slug}/${practitionerSlug}?date=${date}`}
           className="underline underline-offset-4"
