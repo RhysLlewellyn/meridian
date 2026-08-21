@@ -18,7 +18,8 @@
 import {and, eq, sql as raw} from 'drizzle-orm'
 import {afterAll, beforeAll, beforeEach, describe, expect, it} from 'vitest'
 
-import {connect, requireDatabaseUrl} from '../db/client.ts'
+import {connect} from '../db/client.ts'
+import {probeDatabase, skipWithoutDatabase, testDatabaseUrl} from '../db/testing.ts'
 import {
   auditLog,
   booking,
@@ -50,7 +51,15 @@ const PRACTITIONER_SLUG = `test-practitioner-${suffix}`
 const OTHER_SLUG = `test-practitioner-other-${suffix}`
 const SERVICE_SLUG = `test-service-${suffix}`
 
-const pool = connect(requireDatabaseUrl(), {max: ATTEMPTS + 2})
+/**
+ * Nothing in this file can run without Postgres, and none of it can be
+ * mocked into running without one. If there is no database here the tests
+ * are skipped loudly rather than failed — except on CI, where an
+ * unreachable database is a broken pipeline.
+ */
+const skip = skipWithoutDatabase('src/booking/concurrency.test.ts', await probeDatabase())
+
+const pool = connect(testDatabaseUrl(), {max: ATTEMPTS + 2})
 const {db, sql} = pool
 
 let practitionerId: string
@@ -59,6 +68,7 @@ let serviceId: string
 let clientIds: string[]
 
 beforeAll(async () => {
+  if (skip) return
   // Fail loudly rather than passing vacuously. A green concurrency test
   // against a database with no constraint on it is worse than no test.
   const [{exists}] = await sql<{exists: boolean}[]>`
@@ -98,6 +108,7 @@ beforeAll(async () => {
     .values({
       slug: SERVICE_SLUG,
       name: 'Test service',
+      specialty: 'Treatment',
       description: 'Created by the concurrency test.',
       defaultDurationMinutes: DURATION,
       pricePence: 1_000,
@@ -118,6 +129,7 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  if (skip) return
   // Bookings first: they reference the practitioner without a cascade, which
   // is deliberate in the schema — an appointment must not disappear because
   // somebody removed a practitioner row.
@@ -131,6 +143,7 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
+  if (skip) return
   await db.delete(booking).where(eq(booking.serviceId, serviceId))
   await db.delete(timeOff).where(eq(timeOff.practitionerId, practitionerId))
 })
@@ -143,7 +156,7 @@ async function confirmedCount(): Promise<number> {
   return rows[0].count
 }
 
-describe('booking_no_overlap', () => {
+describe.skipIf(skip)('booking_no_overlap', () => {
   it('lets exactly one of eight simultaneous attempts take the slot', async () => {
     const results = await Promise.all(
       clientIds.map((clientId) =>
@@ -303,7 +316,7 @@ describe('booking_no_overlap', () => {
   })
 })
 
-describe('time_off_no_overlap', () => {
+describe.skipIf(skip)('time_off_no_overlap', () => {
   it('refuses two overlapping blocks for one practitioner', async () => {
     await db.insert(timeOff).values({
       practitionerId,

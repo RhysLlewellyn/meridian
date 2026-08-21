@@ -7,7 +7,8 @@
 import {eq} from 'drizzle-orm'
 import {afterAll, beforeAll, beforeEach, describe, expect, it} from 'vitest'
 
-import {connect, requireDatabaseUrl} from '../db/client.ts'
+import {connect} from '../db/client.ts'
+import {probeDatabase, skipWithoutDatabase, testDatabaseUrl} from '../db/testing.ts'
 import {
   auditLog,
   booking,
@@ -18,7 +19,15 @@ import {
 import {cancelBooking} from './cancel.ts'
 import {createBooking} from './create.ts'
 
-const {db, sql} = connect(requireDatabaseUrl(), {max: 2})
+/**
+ * Nothing in this file can run without Postgres, and none of it can be
+ * mocked into running without one. If there is no database here the tests
+ * are skipped loudly rather than failed — except on CI, where an
+ * unreachable database is a broken pipeline.
+ */
+const skip = skipWithoutDatabase('src/booking/cancel.test.ts', await probeDatabase())
+
+const {db, sql} = connect(testDatabaseUrl(), {max: 2})
 
 const suffix = `c${process.pid.toString(36)}`
 const SLOT = new Date('2027-04-14T10:00:00.000Z')
@@ -31,6 +40,7 @@ let serviceId: string
 let clientId: string
 
 beforeAll(async () => {
+  if (skip) return
   const [p] = await db
     .insert(practitioner)
     .values({
@@ -47,6 +57,7 @@ beforeAll(async () => {
     .values({
       slug: `cancel-service-${suffix}`,
       name: 'Cancel fixture service',
+      specialty: 'Treatment',
       description: 'Created by the cancellation test.',
       defaultDurationMinutes: DURATION,
       pricePence: 1_000,
@@ -62,6 +73,7 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  if (skip) return
   await db.delete(booking).where(eq(booking.serviceId, serviceId))
   await db.delete(service).where(eq(service.id, serviceId))
   await db.delete(practitioner).where(eq(practitioner.id, practitionerId))
@@ -70,6 +82,7 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
+  if (skip) return
   await db.delete(booking).where(eq(booking.serviceId, serviceId))
 })
 
@@ -85,7 +98,7 @@ async function book(startsAt: Date = SLOT) {
   return result.booking
 }
 
-describe('cancelBooking', () => {
+describe.skipIf(skip)('cancelBooking', () => {
   it('frees the time for somebody else without deleting the row', async () => {
     const original = await book()
 

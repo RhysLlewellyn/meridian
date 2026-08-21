@@ -24,16 +24,26 @@ import {
   type ServiceRow,
 } from '../availability/query.ts'
 import {shiftDate} from '../availability/time.ts'
-import {connect, requireDatabaseUrl} from '../db/client.ts'
+import {connect} from '../db/client.ts'
+import {probeDatabase, skipWithoutDatabase, testDatabaseUrl} from '../db/testing.ts'
 import {booking} from '../db/schema.ts'
 import {createBooking} from './create.ts'
 
-const {db, sql} = connect(requireDatabaseUrl(), {max: 2})
+/**
+ * Nothing in this file can run without Postgres, and none of it can be
+ * mocked into running without one. If there is no database here the tests
+ * are skipped loudly rather than failed — except on CI, where an
+ * unreachable database is a broken pipeline.
+ */
+const skip = skipWithoutDatabase('src/booking/flow.test.ts', await probeDatabase())
+
+const {db, sql} = connect(testDatabaseUrl(), {max: 2})
 
 let service: ServiceRow
 const written: string[] = []
 
 beforeAll(async () => {
+  if (skip) return
   const found = await getServiceBySlug(db, 'initial-assessment')
   if (!found) {
     throw new Error('No seed data. Run `npm run seed`.')
@@ -42,6 +52,7 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  if (skip) return
   for (const id of written) await db.delete(booking).where(eq(booking.id, id))
   await sql.end()
 })
@@ -57,7 +68,7 @@ async function firstFreeDate(practitionerSlug: string): Promise<string> {
   throw new Error(`No availability at all for ${practitionerSlug} in the next 30 days`)
 }
 
-describe('the seeded clinic', () => {
+describe.skipIf(skip)('the seeded clinic', () => {
   it('has the five services and three practitioners the spec asks for', async () => {
     const services = await listServices(db)
     expect(services.map((s) => s.slug).sort()).toEqual([
@@ -80,7 +91,7 @@ describe('the seeded clinic', () => {
   })
 })
 
-describe('availability from the database', () => {
+describe.skipIf(skip)('availability from the database', () => {
   it('returns slots that respect the practitioner’s own duration', async () => {
     const date = await firstFreeDate('tomas-iriarte')
     const {slots} = await availabilityFor(db, service, 'tomas-iriarte', date)
@@ -107,7 +118,7 @@ describe('availability from the database', () => {
   })
 })
 
-describe('booking a slot the grid offered', () => {
+describe.skipIf(skip)('booking a slot the grid offered', () => {
   it('writes it, reads it back by reference, and stops offering it', async () => {
     const date = await firstFreeDate('nadia-okafor')
     const before = await availabilityFor(db, service, 'nadia-okafor', date)

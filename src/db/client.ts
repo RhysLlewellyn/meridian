@@ -12,9 +12,16 @@ import * as schema from './schema.ts'
  * is proved by the driver serialising them instead of by Postgres. Callers
  * that need real concurrency pass a pool size and get one.
  */
-export function connect(url: string = requireDatabaseUrl(), options: {max?: number} = {}) {
+export function connect(
+  url: string = requireDatabaseUrl(),
+  options: {max?: number; connectTimeoutSeconds?: number} = {},
+) {
   const sql = postgres(url, {
     max: options.max ?? 1,
+    // Left to the driver's default (no timeout) unless a caller asks. The one
+    // that asks is the test probe, which needs "is there a database here?" to
+    // be answered in seconds rather than waited on.
+    connect_timeout: options.connectTimeoutSeconds,
     onnotice: () => {},
   })
   return {sql, db: drizzle(sql, {schema})}
