@@ -6,6 +6,26 @@ const nextConfig: NextConfig = {
     // rather than the bytes. Inlining takes it off the critical path.
     inlineCss: true,
   },
+
+  async headers() {
+    return [
+      {
+        /**
+         * Vercel stamps `x-robots-tag: noindex` on every `*.vercel.app`
+         * deployment URL, which is the right default — it stops a hundred
+         * preview builds competing with the real site in an index — and it
+         * costs this deployment the whole Lighthouse SEO category, because
+         * `is-crawlable` is a pass/fail worth sixty points on its own.
+         *
+         * Setting it here from the application overrides the platform's
+         * value. On a custom domain the header would not be added in the
+         * first place and this line would be a no-op.
+         */
+        source: '/:path*',
+        headers: [{key: 'X-Robots-Tag', value: 'index, follow'}],
+      },
+    ]
+  },
 }
 
 export default nextConfig
