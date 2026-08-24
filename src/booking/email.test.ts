@@ -9,7 +9,11 @@
 
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
-import {sendConfirmationEmail, type ConfirmationEmail} from './email.ts'
+import {
+  composeConfirmationEmail,
+  sendConfirmationEmail,
+  type ConfirmationEmail,
+} from './email.ts'
 
 const DETAIL: ConfirmationEmail = {
   to: 'someone@example.com',
@@ -25,9 +29,12 @@ const DETAIL: ConfirmationEmail = {
 }
 
 const originalKey = process.env.RESEND_API_KEY
+const originalRecipient = process.env.DEMO_EMAIL_RECIPIENT
 
 afterEach(() => {
   process.env.RESEND_API_KEY = originalKey
+  if (originalRecipient === undefined) delete process.env.DEMO_EMAIL_RECIPIENT
+  else process.env.DEMO_EMAIL_RECIPIENT = originalRecipient
   vi.unstubAllGlobals()
 })
 
@@ -50,9 +57,10 @@ describe('with no API key', () => {
   })
 })
 
-describe('with an API key', () => {
+describe('with an API key, writing to the allowlisted address', () => {
   beforeEach(() => {
     process.env.RESEND_API_KEY = 're_test_key'
+    process.env.DEMO_EMAIL_RECIPIENT = 'someone@example.com'
   })
 
   it('posts the calendar file as a base64 attachment', async () => {
@@ -93,5 +101,73 @@ describe('with an API key', () => {
 
     const outcome = await sendConfirmationEmail(DETAIL)
     expect(outcome).toEqual({sent: false, reason: 'fetch failed'})
+  })
+})
+
+/**
+ * The demo only delivers to one address, because the form that feeds this is
+ * public and would otherwise be a button for emailing strangers. Withholding is
+ * not a failure and must not be reported as one — the composed email comes back
+ * so the confirmation page can show what would have gone.
+ */
+describe('writing to any other address', () => {
+  beforeEach(() => {
+    process.env.RESEND_API_KEY = 're_test_key'
+    process.env.DEMO_EMAIL_RECIPIENT = 'clinic@example.com'
+  })
+
+  it('does not send, and returns the email it would have sent', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const outcome = await sendConfirmationEmail(DETAIL)
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(outcome.sent).toBe(false)
+    expect(outcome.sent === false && outcome.withheld).toBe(true)
+
+    // The same object the sender would have posted, not a second rendering of
+    // it: anything else would drift the first time the copy changed.
+    expect(outcome.sent === false && outcome.withheld && outcome.email).toEqual(
+      composeConfirmationEmail(DETAIL),
+    )
+  })
+
+  it('composes a real message rather than a placeholder', async () => {
+    vi.stubGlobal('fetch', vi.fn())
+    const outcome = await sendConfirmationEmail(DETAIL)
+    const email = outcome.sent === false && outcome.withheld ? outcome.email : null
+
+    expect(email?.to).toBe('someone@example.com')
+    expect(email?.from).toBe('Meridian <onboarding@resend.dev>')
+    expect(email?.subject).toContain('Tuesday 25 August 2026 at 08:30')
+    expect(email?.text).toContain('MRD-8F3K')
+    expect(email?.text).toContain('Nadia Okafor')
+    expect(email?.attachment).toBe('meridian-MRD-8F3K.ics')
+    expect(email?.ics).toContain('BEGIN:VCALENDAR')
+  })
+
+  it('matches the allowlist regardless of case or surrounding space', async () => {
+    process.env.DEMO_EMAIL_RECIPIENT = '  SomeOne@Example.com  '
+    const fetchSpy = vi.fn(async () => new Response('{"id":"1"}', {status: 200}))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const outcome = await sendConfirmationEmail(DETAIL)
+
+    expect(outcome).toEqual({sent: true})
+    expect(fetchSpy).toHaveBeenCalledOnce()
+  })
+
+  it('withholds when no recipient is configured at all', async () => {
+    delete process.env.DEMO_EMAIL_RECIPIENT
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+
+    // A missing allowlist must fail closed. The opposite default would turn a
+    // deployment that forgot one variable into an open mail relay.
+    const outcome = await sendConfirmationEmail(DETAIL)
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(outcome.sent === false && outcome.withheld).toBe(true)
   })
 })

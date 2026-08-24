@@ -257,13 +257,17 @@ inside a single transaction, which means the exclusion constraint has to accept 
 before the old one is released, and getting that wrong loses somebody their appointment to free
 a slot they then cannot rebook.
 
-**The confirmation email is not configured in the deployed environment.** The path is real,
-tested, and fails soft by design — the booking is committed before the email is attempted, the
-outcome is written to `audit_log`, and the confirmation page says plainly that the email did not
-send rather than pretending it did. Nobody should lose an appointment because a third party had
-a bad minute. But `RESEND_API_KEY` is not set in production, so on the live site that message is
-what you will see. Resend's shared test sender also only delivers to the account owner's own
-address; a real deployment needs a verified sending domain.
+**The confirmation email is delivered to one address on purpose.** The booking form is public
+and takes whatever email address is typed into it, so a demo that delivers to that address is a
+demo that will email a stranger on request. Delivery is allowlisted to `DEMO_EMAIL_RECIPIENT`;
+every other booking has the email **rendered on the confirmation page instead**, composed by
+`composeConfirmationEmail` — the same function that builds the payload posted to Resend, so what
+is shown on the page is the message rather than an illustration of it. Withheld is recorded in
+`audit_log` as its own action rather than as a failure, because nothing went wrong. A real clinic
+would verify a sending domain and drop the allowlist; that is a DNS record and a one-line change,
+and it is not what this build is trying to prove. The send still fails soft either way: the
+booking is committed before the email is attempted, and no appointment is ever lost because a
+third party had a bad minute.
 
 ---
 
@@ -271,7 +275,7 @@ address; a real deployment needs a verified sending domain.
 
 ```bash
 npm install
-cp .env.example .env          # DATABASE_URL, RESEND_API_KEY
+cp .env.example .env          # DATABASE_URL, RESEND_API_KEY, DEMO_EMAIL_RECIPIENT
 npm run db:up                 # Postgres 17 in Docker, on 5433
 npm run db:migrate
 npm run seed                  # idempotent
@@ -279,7 +283,7 @@ npm run dev                   # http://localhost:3002
 ```
 
 ```bash
-npm test                              # 59 tests; 18 of them need the database
+npm test                              # 63 tests; 18 of them need the database
 node tools/a11y-sweep.mjs             # keyboard and accessibility-tree sweep
 pwsh tools/nvda-pass.ps1              # captures what NVDA actually says (Windows)
 node tools/screenshots.mjs            # regenerates docs/

@@ -295,7 +295,7 @@ export async function getBookingByReference(
 export async function getEmailOutcome(
   db: Database,
   bookingId: string,
-): Promise<{sent: boolean; reason?: string} | undefined> {
+): Promise<{sent: boolean; withheld: boolean; reason?: string} | undefined> {
   const [row] = await db
     .select({action: auditLog.action, detail: auditLog.detail})
     .from(auditLog)
@@ -306,11 +306,14 @@ export async function getEmailOutcome(
   if (!row) return undefined
   return {
     sent: row.action === 'email_sent',
+    // Not sent, and nothing went wrong: the address was not the demo's
+    // allowlisted one. The page shows the email instead of apologising.
+    withheld: row.action === 'email_withheld',
     reason: typeof row.detail.reason === 'string' ? row.detail.reason : undefined,
   }
 }
 
-const EMAIL_ACTIONS = ['email_sent', 'email_failed']
+const EMAIL_ACTIONS = ['email_sent', 'email_failed', 'email_withheld']
 
 export type StaffBooking = {
   reference: string

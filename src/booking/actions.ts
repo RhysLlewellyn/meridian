@@ -139,9 +139,16 @@ export async function createBookingAction(
     whenText: `${formatDateWithYear(date)} at ${time}`,
   })
 
+  // Withheld is its own action, not a failure. Nothing went wrong when the
+  // demo declines to email a stranger, and the confirmation page has to be
+  // able to tell the two apart to know whether to apologise or to explain.
   await db.insert(auditLog).values({
     bookingId: result.booking.id,
-    action: outcome.sent ? 'email_sent' : 'email_failed',
+    action: outcome.sent
+      ? 'email_sent'
+      : outcome.withheld
+        ? 'email_withheld'
+        : 'email_failed',
     detail: outcome.sent ? {to: email} : {to: email, reason: outcome.reason},
   })
 

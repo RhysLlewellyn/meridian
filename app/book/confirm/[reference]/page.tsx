@@ -11,6 +11,7 @@ import {
   formatCalendarDate,
   formatTime,
 } from '../../../../src/availability/time.ts'
+import {composeConfirmationEmail} from '../../../../src/booking/email.ts'
 import {getDb} from '../../../../src/db/index.ts'
 import {formatDateWithYear, formatPrice} from '../../../../src/format.ts'
 import {AppShell} from '../../../AppShell.tsx'
@@ -52,7 +53,7 @@ export default async function Confirmation({params}: Props) {
         )}
       </p>
 
-      {!cancelled && email && !email.sent ? (
+      {!cancelled && email && !email.sent && !email.withheld ? (
         // The booking stands. Saying so plainly is better than a silent
         // failure that has somebody waiting for an email that never comes.
         <p className="mt-4 border-l-2 border-pending bg-surface px-4 py-3 text-sm text-pending">
@@ -140,7 +141,87 @@ export default async function Confirmation({params}: Props) {
           </div>
         </aside>
       </div>
+
+      {!cancelled && email?.withheld ? <WithheldEmail detail={detail} /> : null}
     </AppShell>
+  )
+}
+
+/**
+ * The email that would have gone, shown because it did not.
+ *
+ * Composed by `composeConfirmationEmail`, which is the same function the sender
+ * calls — so this is not a mock-up of the email, it is the email, rendered
+ * instead of posted.
+ */
+function WithheldEmail({
+  detail,
+}: {
+  detail: NonNullable<Awaited<ReturnType<typeof getBookingByReference>>>
+}) {
+  const date = formatCalendarDate(calendarDateAt(detail.startsAt))
+  const email = composeConfirmationEmail({
+    to: detail.clientEmail,
+    clientName: detail.clientName,
+    reference: detail.reference,
+    serviceName: detail.serviceName,
+    practitionerName: detail.practitionerName,
+    practitionerTitle: detail.practitionerTitle,
+    startsAt: detail.startsAt,
+    endsAt: detail.endsAt,
+    status: 'confirmed',
+    whenText: `${formatDateWithYear(date)} at ${formatTime(detail.startsAt)}`,
+  })
+
+  return (
+    <section
+      aria-labelledby="withheld-heading"
+      className="mt-4 border border-line bg-surface"
+    >
+      <h2
+        id="withheld-heading"
+        className="border-b border-line bg-ground px-4 py-2 font-mono text-xs tracking-[0.12em] text-muted uppercase"
+      >
+        Delivery is restricted in this demo
+      </h2>
+
+      <div className="px-4 py-3">
+        <p className="text-sm text-ink-2">
+          Meridian&rsquo;s booking form is public, and it takes whatever email address is
+          typed into it. A demo that sends to that address is a demo that will email a
+          stranger on request, so delivery is allowlisted to the clinic&rsquo;s own address
+          and every other booking gets the email shown here instead. It is composed by the
+          same function that posts it to Resend, so this is the message itself rather than
+          an illustration of it.
+        </p>
+
+        <dl className="mt-3 border-t border-line pt-3 text-sm">
+          <EmailRow label="From" value={email.from} />
+          <EmailRow label="To" value={email.to} />
+          <EmailRow label="Subject" value={email.subject} />
+          <EmailRow label="Attached" value={email.attachment} />
+        </dl>
+
+        {/*
+          `whitespace-pre-wrap` rather than a scrolling block: the body is
+          nine short lines and its line breaks are part of it.
+        */}
+        <p className="mt-3 border-t border-line pt-3 font-mono text-xs whitespace-pre-wrap text-ink-2">
+          {email.text}
+        </p>
+      </div>
+    </section>
+  )
+}
+
+function EmailRow({label, value}: {label: string; value: string}) {
+  return (
+    <div className="flex flex-wrap gap-x-4 py-1">
+      <dt className="w-20 shrink-0 font-mono text-[0.625rem] tracking-[0.1em] text-muted uppercase">
+        {label}
+      </dt>
+      <dd className="min-w-0 font-mono text-xs break-words text-ink">{value}</dd>
+    </div>
   )
 }
 
