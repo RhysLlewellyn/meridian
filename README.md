@@ -20,16 +20,25 @@ migrations checked in · Tailwind v4 · Vitest · Resend for the confirmation em
 ## Lighthouse
 
 Lighthouse 13.4.1, mobile preset, run against the deployed URL rather than a local build.
-Median of three runs per page, because a single run moves a point or two between them.
+Median of five runs per page.
 
 | | Performance | Accessibility | Best practices | SEO | Agentic Browsing |
 |---|---|---|---|---|---|
-| `/` — the clinic | **100** | **100** | **100** | **100** | **100** |
-| `/book/initial-assessment/any` — the booking grid | **100** | **100** | **100** | **100** | **100** |
+| `/` — the clinic | **97** | **100** | **100** | **100** | **100** |
+| `/book/initial-assessment/any` — the booking grid | **99** | **100** | **100** | **100** | **100** |
 
-LCP is 1.3 s on the homepage and 1.5 s on the grid, CLS is 0 on both, and TBT is 25 ms and
-14 ms. Every page that touches the database is rendered per request — there is no static
-cache doing that work.
+CLS is **0** on both, which is the number a layout change is most likely to cost you and the
+one I check first. LCP is 2.0 s on both and TBT is 88 ms and 80 ms.
+
+Five runs rather than three because performance is the one category that will not sit still
+here. The homepage scored 99, 99, 97, 97, 97 across those five, on a page whose LCP is a
+paragraph of text and whose time to first byte is 66 ms — the remaining two seconds is render
+delay under Lighthouse's simulated mobile throttling, not the server. Running the same
+measurement against the *previous* deployment on the same afternoon gives 98, 100, 99, so the
+band is the hobby tier and the throttle rather than anything in the build. A single lucky run
+is what a screenshot of a 100 usually is, and quoting one would have been the easier thing to
+do. Every page that touches the database is rendered per request — there is no static cache
+doing that work.
 
 Agentic Browsing is the fifth category in Lighthouse 13, replacing PWA. It scores what an
 agent rather than a person can make of the page: the accessibility tree it would have to
