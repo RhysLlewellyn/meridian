@@ -180,15 +180,49 @@ is the information they are there to carry. `aria-disabled` means they have to b
 other way, and not with a JavaScript handler — `type="button"` does it in the markup, so a
 booked slot is inert whether or not a script loaded.
 
-The grid is a composite widget with a roving `tabindex`: Tab reaches it once, arrow keys move
-within it, Enter selects. Thirty-two quarter-hours is otherwise thirty-two tab stops. The row
-width is measured from the layout rather than assumed, because the grid reflows with the
+The grid is a `listbox`, and the role is load-bearing rather than decoration. It began as a
+`<ul>` of buttons with a roving `tabindex`: Tab reaches it once, arrow keys move within it,
+Enter selects. Thirty-two quarter-hours is otherwise thirty-two tab stops. That works for
+somebody looking at the screen — and **it did not work at all for anybody using NVDA**, which
+is the thing sitting with headphones on found and no automated check did. Without a composite
+role a screen reader has no reason to leave browse mode, where the arrow keys belong to *it*
+and never reach the page. The transcript of the old build is unambiguous:
+
+```
+'08:00UnavailableWednesday 26 August, not available', 'button', 'unavailable'
+Right → CharacterModeCommand(True), '8'
+Right → 'colon'
+Up    → 'out of list', 'out of form'
+```
+
+Right arrow read the character "8", then the colon. One tab stop that a screen reader user
+could enter and then not move within. With `role="listbox"` on the container and `role="option"`
+on each slot, NVDA switches to focus mode on entry and hands the keys over:
+
+```
+Tab   → '08:00, Unavailable, Wednesday 26 August',            'unavailable',  '1 of 30'
+Right → '08:15, Unavailable, Wednesday 26 August',            'unavailable',  '2 of 30'
+Down  → '10:00, 45 minutes, with Nadia Okafor, Wed 26 August','not selected', '9 of 30'
+```
+
+Position and state come free with the role — *"9 of 30"* tells somebody how much day is left,
+which the old markup could not say. The slots are still `<button type="submit">`, so the
+no-JavaScript path is untouched; the role is what the accessibility tree sees, not the browser.
+
+The names in that first transcript are the second thing listening found. *"08:00Unavailable"* —
+the time welded to the word after it, because a name computed from three block elements gets no
+spaces between them. `SlotGrid.tsx` carried a comment asserting that Chrome inserts one. It does
+not. Every slot in this build had been announcing as one nonsense token since the day it was
+written, my own sweep printed the evidence on every run, and nothing flagged it because the
+sweep asserts a name *exists* and never asks whether it is sayable. Each slot now carries an
+explicit `aria-label` with the visible text inside it, so WCAG 2.5.3 still holds for anybody
+driving the page by voice. The same defect had the brand reading as *"MeridianPHYSIOTHERAPY"*
+and the step indicator as *"1Service— completed"*; both are now spoken as written.
+
+The row width is measured from the layout rather than assumed, because the grid reflows with the
 viewport and Up has to mean up on a phone. Changing the date replaces the grid without moving
-focus, so the result is announced through `aria-live="polite"` — *"38 appointments available on
-Tuesday 25 August. 7 other times shown as unavailable."* Each slot's accessible name makes sense
-out of context — *"08:00 45 minutes with Nadia Okafor, Wednesday 26 August"* — with the visible
-text as a prefix rather than a reordering, because WCAG 2.5.3 wants what you can see to be
-sayable by somebody driving the page by voice.
+focus, so the result is announced through `aria-live="polite"` — *"18 appointments available on
+Wednesday 26 August. 12 other times shown as unavailable."*
 
 The whole flow works with JavaScript off. Each slot is a submit button with a `formaction`, so
 selection is an ordinary navigation to a URL that carries the choice; the client component adds
@@ -224,15 +258,26 @@ focus into `<main>` rather than merely scrolling to it.
 `silence` synth, so every utterance is logged at DEBUG level without being spoken aloud, and
 drives the page with `SendKeys` rather than through the DevTools protocol — CDP-synthesised
 keys bypass the OS keyboard hook entirely, browse mode never engages, and a CDP-driven "NVDA
-test" ends up testing something else. It refuses to run if Chrome cannot take the foreground,
-because NVDA reads the focused window and a backgrounded run produces an empty transcript that
-looks exactly like a pass.
+test" ends up testing something else. That distinction is not theoretical: it is exactly why the
+grid's arrow keys passed every automated check and failed the moment a real one was pressed. It
+refuses to run if Chrome cannot take the foreground, because NVDA reads the focused window and a
+backgrounded run produces an empty transcript that looks exactly like a pass.
 
-**What has not happened: listening to it.** The harness above captures what NVDA says; it does
-not replace a person sitting down with headphones for twenty minutes and noticing that
-something announced correctly is still confusing. Booking end to end without a mouse has been
-verified — keyboard only, in a real browser, including arrow-keying across the slot grid.
-Hearing it has not.
+**It has now been listened to**, which is how the two defects above were found. Both were
+invisible to axe, to Lighthouse and to my own sweep — one was a missing space in a computed
+name, the other was an interaction model that a sighted keyboard user gets and a screen reader
+user does not. Neither is the kind of thing a checker can see, and both were sitting in a build
+whose README already claimed the slot grid as its strongest accessibility work.
+
+Two things the process itself taught me, since they cost more than the fixes did. The harness
+matched its browser window on the title containing "Meridian" — which also matches a Vercel
+dashboard tab, so one run tabbed through somebody else's website and produced a transcript that
+looked like a result. It now matches on the scratch profile in the process command line. And the
+slot grid is at tab stop **fifteen**, not thirteen, because a native `<input type="date">` is
+four stops in a real browser — day, month, year, picker — where CDP-synthesised Tab treats it as
+one. Two of my earlier "the arrows do nothing" runs were pressing arrow keys while focus sat in
+Chrome's toolbar. A test that drives the wrong window is worse than no test, because it answers
+confidently.
 
 ---
 

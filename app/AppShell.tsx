@@ -107,8 +107,15 @@ function Rail({current}: {current?: NavKey}) {
     // rule is right to call it.
     <header className="border-b border-line bg-ground lg:sticky lg:top-0 lg:h-dvh lg:border-r lg:border-b-0">
       <div className="flex items-center gap-3 border-line px-4 py-3 lg:border-b lg:py-4">
+        {/*
+          An explicit name. The two lines below are separate block elements, and
+          the accessible name computed from them runs straight together --
+          NVDA says "MeridianPHYSIOTHERAPY" as one word. A label spanning both
+          visible strings fixes it without hiding either from the page.
+        */}
         <Link
           href="/"
+          aria-label="Meridian Physiotherapy"
           className="flex items-center gap-2.5 transition-opacity duration-[120ms] hover:opacity-80"
         >
           <span

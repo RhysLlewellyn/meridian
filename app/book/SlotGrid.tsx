@@ -104,7 +104,18 @@ export function SlotGrid({date, anyPractitioner, slots, blocked}: Props) {
   }
 
   return (
+    /*
+      A real `listbox`, and this is what makes the arrow keys work for anybody
+      who is not looking at the screen. Without a composite role NVDA has no
+      reason to leave browse mode, where Left and Right read characters and
+      never reach this component's handler at all -- so the grid was one tab
+      stop that a screen reader user could enter and then not move within. The
+      buttons stay `<button type="submit">`, so the no-JavaScript form path is
+      unchanged; the role is what the accessibility tree sees, not the browser.
+    */
     <ul
+      role="listbox"
+      aria-label={`Appointment times on ${formatDate(date)}`}
       onKeyDown={onKeyDown}
       className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-2"
     >
@@ -115,13 +126,28 @@ export function SlotGrid({date, anyPractitioner, slots, blocked}: Props) {
         const when = formatDate(date)
 
         if (cell.kind === 'blocked') {
+          const why = cell.reason === 'taken' ? 'Unavailable' : 'Too soon'
+
           return (
-            <li key={cell.id}>
+            <li key={cell.id} role="presentation">
               <button
                 // Not `disabled`: it would leave the tab order and take the
                 // fact that this time exists with it.
                 type="button"
+                role="option"
+                aria-selected={false}
                 aria-disabled="true"
+                /*
+                  One label, rather than a name computed from three block
+                  elements. Left to itself this button announced as
+                  "08:00UnavailableThursday 3 September" -- the time welded to
+                  the word after it, which a synthesiser reads as one nonsense
+                  token. Both visible strings are still inside the label, so
+                  what is on screen stays sayable.
+                */
+                aria-label={`${cell.time}, ${why}, ${when}${
+                  cell.reason === 'taken' ? '' : ' — appointments open two hours ahead'
+                }`}
                 ref={(node) => {
                   buttons.current[index] = node
                 }}
@@ -135,15 +161,7 @@ export function SlotGrid({date, anyPractitioner, slots, blocked}: Props) {
                   booking from a study day, and the clinic should not be
                   telling patients which it is either.
                 */}
-                <span className="block text-xs">
-                  {cell.reason === 'taken' ? 'Unavailable' : 'Too soon'}
-                </span>
-                <span className="sr-only">
-                  {when}
-                  {cell.reason === 'taken'
-                    ? ', not available'
-                    : ', too soon to book — appointments open two hours ahead'}
-                </span>
+                <span className="block text-xs">{why}</span>
               </button>
             </li>
           )
@@ -151,20 +169,34 @@ export function SlotGrid({date, anyPractitioner, slots, blocked}: Props) {
 
         const selected = chosen === cell.id
 
+        const length = formatDuration(cell.durationMinutes)
+
         return (
-          <li key={cell.id}>
+          <li key={cell.id} role="presentation">
             <button
               type="submit"
               name="time"
               value={cell.time}
               formAction={cell.action}
+              role="option"
+              aria-selected={selected}
+              /*
+                Visible text first, then what the tile cannot show. WCAG 2.5.3
+                wants what is on screen to be sayable by somebody driving the
+                page by voice; the rest is what makes the name mean something
+                when it is read out of context.
+              */
+              aria-label={`${cell.time}, ${
+                anyPractitioner
+                  ? `${cell.practitionerName}, ${length}`
+                  : `${length}, with ${cell.practitionerName}`
+              }, ${when}${selected ? ', selected' : ''}`}
               ref={(node) => {
                 buttons.current[index] = node
               }}
               tabIndex={index === focused ? 0 : -1}
               onFocus={() => setFocused(index)}
               onClick={() => setChosen(cell.id)}
-              aria-pressed={selected || undefined}
               className={`${shared} ${
                 selected
                   ? 'border-accent bg-accent font-medium text-accent-ink'
@@ -175,22 +207,7 @@ export function SlotGrid({date, anyPractitioner, slots, blocked}: Props) {
               <span
                 className={`block text-xs ${selected ? 'text-accent-ink' : 'text-muted'}`}
               >
-                {anyPractitioner
-                  ? cell.practitionerName
-                  : formatDuration(cell.durationMinutes)}
-              </span>
-              {/*
-                Appended, never reordered: WCAG 2.5.3 wants the visible label
-                to be a prefix of the accessible name so somebody driving the
-                page by voice can say what they can see. Chrome joins block
-                children with a space of its own, so this starts with a word
-                rather than with the punctuation that would strand it.
-              */}
-              <span className="sr-only">
-                {anyPractitioner
-                  ? `${formatDuration(cell.durationMinutes)}, ${when}`
-                  : `with ${cell.practitionerName}, ${when}`}
-                {selected ? ', selected' : ''}
+                {anyPractitioner ? cell.practitionerName : length}
               </span>
             </button>
           </li>

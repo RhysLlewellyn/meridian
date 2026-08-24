@@ -70,6 +70,12 @@ export function BookingFrame({step, title, selection, children}: Props) {
           const state = number < step ? 'done' : number === step ? 'current' : 'upcoming'
           const href = state === 'done' ? hrefs[index] : undefined
 
+          // Spoken as one string rather than assembled from three block
+          // elements, which computed to "1Service--- completed".
+          const spoken = `Step ${number}, ${label}, ${
+            state === 'done' ? 'completed' : state === 'current' ? 'current step' : 'not reached yet'
+          }`
+
           const inner = (
             <>
               <span
@@ -84,18 +90,6 @@ export function BookingFrame({step, title, selection, children}: Props) {
                 {number}
               </span>
               <span className={state === 'upcoming' ? 'text-muted' : undefined}>{label}</span>
-              {/*
-                The three states differ in fill, border and weight, so they
-                survive greyscale. They also have to differ in words, or a
-                screen reader hears four identical items.
-              */}
-              <span className="sr-only">
-                {state === 'done'
-                  ? ' — completed'
-                  : state === 'current'
-                    ? ' — current step'
-                    : ' — not reached yet'}
-              </span>
             </>
           )
 
@@ -104,6 +98,7 @@ export function BookingFrame({step, title, selection, children}: Props) {
               {href ? (
                 <Link
                   href={href}
+                  aria-label={spoken}
                   className="flex h-full items-center gap-2 px-3 py-1.5 text-sm font-medium transition-colors duration-[120ms] hover:bg-surface-2"
                 >
                   {inner}
@@ -111,6 +106,7 @@ export function BookingFrame({step, title, selection, children}: Props) {
               ) : (
                 <span
                   aria-current={state === 'current' ? 'step' : undefined}
+                  aria-label={spoken}
                   className={`flex h-full items-center gap-2 px-3 py-1.5 text-sm ${
                     state === 'current' ? 'font-medium' : ''
                   }`}

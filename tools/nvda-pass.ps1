@@ -87,6 +87,24 @@ public class Win {
 '@
 Add-Type -AssemblyName System.Windows.Forms
 
+<#
+  Chrome windows belonging to this run's scratch profile.
+
+  Matched on the profile directory in the command line rather than on the
+  window title, because the title is not ours to rely on: any tab whose title
+  contains "Meridian" -- a Vercel dashboard, a GitHub page, this repository in
+  an editor -- would otherwise be driven instead, and NVDA would faithfully
+  transcribe it.
+#>
+function ProfileWindows([string]$ProfilePath) {
+  $ids = Get-CimInstance Win32_Process -Filter "Name='chrome.exe'" |
+    Where-Object { $_.CommandLine -and $_.CommandLine -like ("*" + $ProfilePath + "*") } |
+    Select-Object -ExpandProperty ProcessId
+  if (-not $ids) { return @() }
+  Get-Process -Id $ids -ErrorAction SilentlyContinue |
+    Where-Object { $_.MainWindowTitle }
+}
+
 function Speech([int]$From) {
   Get-Content $log |
     Select-Object -Skip $From |
@@ -112,14 +130,35 @@ Start-Process $chrome -ArgumentList @(
 ) | Out-Null
 Start-Sleep -Seconds 10
 
-$win = Get-Process chrome | Where-Object { $_.MainWindowTitle -like "*Meridian*" } | Select-Object -First 1
-if (-not $win) { throw "Chrome never opened a Meridian window" }
-[Win]::ShowWindow($win.MainWindowHandle, 9) | Out-Null
-[Win]::SetForegroundWindow($win.MainWindowHandle) | Out-Null
-Start-Sleep -Seconds 2
+# Scoped to the scratch profile's own processes, not to the window title.
+# "Meridian" in a title also matches the Vercel dashboard's deployment page,
+# and a run that tabs through somebody else's website produces a transcript
+# that looks like a result and is not one. The cleanup at the bottom had the
+# same bug and would close that window too.
+$win = $null
+for ($try = 0; $try -lt 20; $try++) {
+  $win = ProfileWindows $prof | Select-Object -First 1
+  if ($win) { break }
+  Start-Sleep -Seconds 1
+}
+if (-not $win) { throw "Chrome never opened a window under $prof" }
+if ($win.MainWindowTitle -notlike "*Meridian*") {
+  throw ("The scratch-profile window is '" + $win.MainWindowTitle + "', not Meridian. " +
+         "The site did not load; a run from here would transcribe the wrong page.")
+}
+# Retried rather than attempted once. Another window taking the foreground for
+# a moment as Chrome opens is common and transient; a single attempt turns that
+# into a failed run, and the check below is what actually matters.
+$front = ""
+for ($grab = 0; $grab -lt 6; $grab++) {
+  [Win]::ShowWindow($win.MainWindowHandle, 9) | Out-Null
+  [Win]::SetForegroundWindow($win.MainWindowHandle) | Out-Null
+  Start-Sleep -Seconds 2
+  $front = [Win]::ForegroundTitle()
+  if ($front -eq $win.MainWindowTitle) { break }
+}
 
-$front = [Win]::ForegroundTitle()
-if ($front -notlike "*Meridian*") {
+if ($front -ne $win.MainWindowTitle) {
   Start-Process $nvda -ArgumentList "-q" | Out-Null
   throw ("Chrome could not take the foreground -- '" + $front + "' is holding it. " +
          "NVDA reads the focused window, so this run would produce an empty transcript " +
@@ -153,6 +192,4 @@ Write-Host ""
 Write-Host ("Transcript: " + (Join-Path $OutDir "transcript.txt"))
 
 Start-Process $nvda -ArgumentList "-q" | Out-Null
-Get-Process chrome -ErrorAction SilentlyContinue |
-  Where-Object { $_.MainWindowTitle -like "*Meridian*" } |
-  Stop-Process -Force -ErrorAction SilentlyContinue
+ProfileWindows $prof | Stop-Process -Force -ErrorAction SilentlyContinue
