@@ -110,7 +110,7 @@ export function SlotGrid({date, anyPractitioner, slots, blocked}: Props) {
     >
       {cells.map((cell, index) => {
         const shared =
-          'tabular block w-full border px-3 py-2 text-left transition-colors duration-[120ms] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+          'tabular block w-full border px-3 py-2 text-left font-mono transition-colors duration-[120ms]'
 
         const when = formatDate(date)
 
@@ -127,7 +127,7 @@ export function SlotGrid({date, anyPractitioner, slots, blocked}: Props) {
                 }}
                 tabIndex={index === focused ? 0 : -1}
                 onFocus={() => setFocused(index)}
-                className={`${shared} cursor-not-allowed border-line bg-surface-2 text-muted`}
+                className={`${shared} cursor-not-allowed border-dashed border-line bg-transparent text-muted`}
               >
                 <span className="block font-medium line-through">{cell.time}</span>
                 {/*
@@ -167,8 +167,8 @@ export function SlotGrid({date, anyPractitioner, slots, blocked}: Props) {
               aria-pressed={selected || undefined}
               className={`${shared} ${
                 selected
-                  ? 'border-accent bg-accent text-accent-ink'
-                  : 'border-line bg-surface hover:border-accent hover:bg-surface-2'
+                  ? 'border-accent bg-accent font-medium text-accent-ink'
+                  : 'border-line-strong bg-surface hover:border-accent hover:bg-surface-2'
               }`}
             >
               <span className="block font-medium">{cell.time}</span>

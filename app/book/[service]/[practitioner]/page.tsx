@@ -65,6 +65,7 @@ export default async function ChooseTime({params, searchParams}: Props) {
   return (
     <BookingFrame
       step={3}
+      title="Choose a date and time"
       selection={{
         service: {name: service.name, slug: service.slug, specialty: service.specialty},
         practitioner: chosen
@@ -76,8 +77,7 @@ export default async function ChooseTime({params, searchParams}: Props) {
         pricePence: chosen?.pricePence,
       }}
     >
-      <h1 className="text-xl font-medium">Choose a date and time</h1>
-      <p className="mt-1 text-ink-2">
+      <p className="text-ink-2">
         {chosen ? (
           <>
             {service.name} with {chosen.name}.
@@ -94,14 +94,14 @@ export default async function ChooseTime({params, searchParams}: Props) {
         // and note that the grid below no longer has it.
         <p
           role="alert"
-          className="mt-5 border-2 border-danger px-4 py-3 text-sm text-danger"
+          className="mt-4 border-l-2 border-cancelled bg-surface px-4 py-3 text-sm text-cancelled"
         >
           <strong className="font-medium">{taken} has just been booked</strong> by somebody
           else. It has been removed below — please choose another time.
         </p>
       ) : null}
 
-      <div className="mt-5 flex flex-wrap items-center gap-3 border-y border-line py-3">
+      <div className="mt-4 flex flex-wrap items-center gap-3 border-y border-line py-3">
         <DayStep
           href={`${detailsBase}/${practitionerSlug}?date=${previous}`}
           label={`← ${formatDateShort(previous)}`}
@@ -119,11 +119,11 @@ export default async function ChooseTime({params, searchParams}: Props) {
             defaultValue={date}
             min={earliest}
             max={latest}
-            className="tabular border border-line bg-surface px-2 py-1.5 text-sm"
+            className="tabular border border-line-strong bg-surface px-2 py-1.5 text-sm"
           />
           <button
             type="submit"
-            className="border border-line px-3 py-1.5 text-sm transition-colors duration-[120ms] hover:bg-surface-2"
+            className="border border-line-strong px-3 py-1.5 text-sm transition-colors duration-[120ms] hover:bg-surface-2"
           >
             Go
           </button>
@@ -194,7 +194,7 @@ export default async function ChooseTime({params, searchParams}: Props) {
  * follows on Enter, and only the mouse is stopped by `pointer-events: none`.
  */
 function DayStep({href, label, disabled}: {href: string; label: string; disabled: boolean}) {
-  const shared = 'border border-line px-3 py-1.5 text-sm'
+  const shared = 'border border-line-strong px-3 py-1.5 text-sm'
   if (disabled) {
     return <span className={`${shared} text-muted`}>{label}</span>
   }

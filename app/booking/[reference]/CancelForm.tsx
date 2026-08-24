@@ -21,7 +21,7 @@ export function CancelForm({reference}: {reference: string}) {
 
   return (
     <details open={Boolean(state.error)} className="mt-3 border border-line">
-      <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-danger">
+      <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-cancelled">
         Cancel this appointment
       </summary>
 
@@ -46,12 +46,12 @@ export function CancelForm({reference}: {reference: string}) {
           defaultValue={state.reason}
           aria-describedby={state.error ? 'reason-error reason-hint' : 'reason-hint'}
           aria-invalid={state.error ? true : undefined}
-          className={`mt-2 w-full border bg-surface px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-            state.error ? 'border-danger' : 'border-line'
+          className={`mt-2 w-full border bg-surface px-3 py-2 ${
+            state.error ? 'border-cancelled' : 'border-line-strong'
           }`}
         />
         {state.error ? (
-          <p id="reason-error" role="alert" className="mt-1 text-sm text-danger">
+          <p id="reason-error" role="alert" className="mt-1 text-sm text-cancelled">
             {state.error}
           </p>
         ) : null}
@@ -59,7 +59,7 @@ export function CancelForm({reference}: {reference: string}) {
         <button
           type="submit"
           disabled={pending}
-          className="mt-4 border-2 border-danger bg-danger px-4 py-2 text-sm font-medium text-accent-ink transition-opacity duration-[120ms] disabled:opacity-60"
+          className="mt-4 border-2 border-cancelled bg-cancelled px-4 py-2 text-sm font-medium text-ground transition-opacity duration-[120ms] disabled:opacity-60"
         >
           {pending ? 'Cancelling…' : 'Confirm cancellation'}
         </button>

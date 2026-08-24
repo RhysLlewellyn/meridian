@@ -13,6 +13,7 @@ import {
 } from '../../../../src/availability/time.ts'
 import {getDb} from '../../../../src/db/index.ts'
 import {formatDateWithYear, formatPrice} from '../../../../src/format.ts'
+import {AppShell} from '../../../AppShell.tsx'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,11 +32,19 @@ export default async function Confirmation({params}: Props) {
   const cancelled = detail.status === 'cancelled'
 
   return (
-    <main id="main" tabIndex={-1} className="focus:outline-none mx-auto w-full max-w-5xl px-6 py-8">
-      <h1 className="text-2xl font-medium">
-        {cancelled ? 'Appointment cancelled' : 'Appointment confirmed'}
-      </h1>
-      <p className="mt-1 text-ink-2">
+    /*
+      One of the two exceptions to "no reading measure". The confirmation is a
+      receipt and a paragraph, not a tool -- there is nothing here to scan
+      across, and a full-width row of five facts on a 27-inch monitor is
+      harder to read than a column of them, not easier.
+    */
+    <AppShell
+      current="book"
+      measure
+      title={cancelled ? 'Appointment cancelled' : 'Appointment confirmed'}
+      meta={detail.reference}
+    >
+      <p className="text-ink-2">
         {cancelled ? (
           <>This appointment has been cancelled and the time released.</>
         ) : (
@@ -46,7 +55,7 @@ export default async function Confirmation({params}: Props) {
       {!cancelled && email && !email.sent ? (
         // The booking stands. Saying so plainly is better than a silent
         // failure that has somebody waiting for an email that never comes.
-        <p className="mt-5 border-2 border-warn px-4 py-3 text-sm text-warn">
+        <p className="mt-4 border-l-2 border-pending bg-surface px-4 py-3 text-sm text-pending">
           <strong className="font-medium">The confirmation email did not send.</strong> The
           appointment is booked and the details are below — take a note of the reference, or
           add it to your calendar using the button.
@@ -54,17 +63,20 @@ export default async function Confirmation({params}: Props) {
       ) : null}
 
       {!cancelled && email?.sent ? (
-        <p className="mt-5 border border-line bg-surface-2 px-4 py-3 text-sm text-ink-2">
+        <p className="mt-4 border-l-2 border-accent bg-surface px-4 py-3 text-sm text-ink-2">
           A confirmation is on its way to {detail.clientEmail}, with a calendar file
           attached.
         </p>
       ) : null}
 
-      <div className="mt-6 grid items-start gap-8 lg:grid-cols-[1fr_17rem]">
-        <section aria-labelledby="detail-heading" className="min-w-0 border border-line">
+      <div className="mt-4 grid items-start gap-4 md:grid-cols-[1fr_15rem]">
+        <section
+          aria-labelledby="detail-heading"
+          className="min-w-0 border border-line bg-surface"
+        >
           <h2
             id="detail-heading"
-            className="border-b border-line bg-surface-2 px-4 py-2 font-mono text-xs tracking-[0.14em] text-muted uppercase"
+            className="border-b border-line bg-ground px-4 py-2 font-mono text-xs tracking-[0.12em] text-muted uppercase"
           >
             Appointment
           </h2>
@@ -89,8 +101,8 @@ export default async function Confirmation({params}: Props) {
           </dl>
         </section>
 
-        <aside className="border border-line">
-          <h2 className="border-b border-line bg-surface-2 px-4 py-2 font-mono text-xs tracking-[0.14em] text-muted uppercase">
+        <aside className="border border-line bg-surface">
+          <h2 className="border-b border-line bg-ground px-4 py-2 font-mono text-xs tracking-[0.12em] text-muted uppercase">
             Next
           </h2>
           <div className="px-4 py-3 text-sm">
@@ -128,7 +140,7 @@ export default async function Confirmation({params}: Props) {
           </div>
         </aside>
       </div>
-    </main>
+    </AppShell>
   )
 }
 
@@ -145,7 +157,7 @@ function Row({
 }) {
   return (
     <div className="flex flex-wrap gap-x-4 border-b border-line py-2 first:pt-0 last:border-0 last:pb-0">
-      <dt className="w-28 shrink-0 text-xs tracking-[0.06em] text-muted uppercase">
+      <dt className="w-28 shrink-0 font-mono text-[0.625rem] tracking-[0.1em] text-muted uppercase">
         {label}
       </dt>
       <dd className={`${tabular || mono ? 'tabular' : ''} ${mono ? 'font-mono font-medium' : ''}`}>

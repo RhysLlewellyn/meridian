@@ -185,6 +185,24 @@ The whole flow works with JavaScript off. Each slot is a submit button with a `f
 selection is an ordinary navigation to a URL that carries the choice; the client component adds
 the arrow keys and an optimistic fill on top of that rather than replacing it.
 
+The palette is dark, and three of its tokens were changed before it shipped. The brief
+specified `--color-muted: #7E8C92`. It clears 4.5:1 on the page ground and on the panel
+surface — and lands at **4.497:1** on `--color-surface-2`, which is the fill behind every
+hovered table row and every unavailable slot. Three thousandths under, and still a failure.
+`--color-cancelled` was worse: `#C4635C` is 4.71:1 on the ground and 3.93:1 on surface-2, and
+the ground is the one place a cancellation never appears — it is read in the schedule table,
+and in that table's hover state. Both were lightened along their own hue until they cleared on
+all three grounds rather than swapped for something safer, because the direction came from the
+brief and what failed was arithmetic rather than taste.
+
+The third is not a text colour at all. `--color-line-strong` draws the border on slot buttons,
+filter chips and text inputs, and at the specified `#3A464B` it is 1.77:1 against the surface
+behind it. The text inside those controls is legible either way; the border is what says the
+thing *is* a control, which is what WCAG 1.4.11 asks 3:1 of — and neither axe nor Lighthouse
+checks that, so nothing would have failed. Raised until it clears at 3.01:1 on its worst
+ground. Every ratio is computed rather than estimated, and each one is recorded in the comment
+beside its token in [`app/globals.css`](app/globals.css).
+
 `tools/a11y-sweep.mjs` is the first mechanical half of the pass. It drives headless Chrome over the
 DevTools protocol, tabs each page the way a keyboard user would, and reads accessible names out
 of Chrome's own accessibility tree rather than guessing from `textContent` — those two disagree

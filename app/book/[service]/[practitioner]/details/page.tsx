@@ -44,6 +44,7 @@ export default async function Details({params, searchParams}: Props) {
   return (
     <BookingFrame
       step={4}
+      title="Your details"
       selection={{
         service: {name: service.name, slug: service.slug, specialty: service.specialty},
         practitioner: {name: practitioner.name, title: practitioner.title},
@@ -52,13 +53,12 @@ export default async function Details({params, searchParams}: Props) {
         pricePence: practitioner.pricePence,
       }}
     >
-      <h1 className="text-xl font-medium">Your details</h1>
       {/*
         Position-neutral on purpose. The summary sits beside this form on a
         laptop and beneath it on a phone, and copy that says "the panel on the
         right" is wrong for half the people reading it.
       */}
-      <p className="mt-1 text-ink-2">
+      <p className="text-ink-2">
         Your appointment is summarised with this form.{' '}
         <Link
           href={`/book/${service.slug}/${practitionerSlug}?date=${date}`}

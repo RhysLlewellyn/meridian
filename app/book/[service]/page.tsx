@@ -32,20 +32,20 @@ export default async function ChoosePractitioner({params}: Props) {
   return (
     <BookingFrame
       step={2}
+      title="Choose a practitioner"
       selection={{
         service: {name: service.name, slug: service.slug, specialty: service.specialty},
       }}
     >
-      <h1 className="text-xl font-medium">Choose a practitioner</h1>
-      <p className="mt-1 text-ink-2">
+      <p className="text-ink-2">
         {service.name} — {service.description}
       </p>
 
-      <ul className="mt-5 border-t border-line">
-        <li className="border-b border-line">
+      <ul className="mt-4 border-t border-line">
+        <li className="border-b border-line bg-surface">
           <Link
             href={`/book/${service.slug}/${ANY}`}
-            className="flex gap-6 px-1 py-4 transition-colors duration-[120ms] hover:bg-surface-2"
+            className="flex gap-6 px-4 py-4 transition-colors duration-[120ms] hover:bg-surface-2"
           >
             <div className="flex-1">
               <h2 className="font-medium">No preference</h2>
@@ -58,10 +58,10 @@ export default async function ChoosePractitioner({params}: Props) {
         </li>
 
         {practitioners.map((person) => (
-          <li key={person.id} className="border-b border-line">
+          <li key={person.id} className="border-b border-line bg-surface">
             <Link
               href={`/book/${service.slug}/${person.slug}`}
-              className="flex items-start gap-6 px-1 py-4 transition-colors duration-[120ms] hover:bg-surface-2"
+              className="flex items-start gap-6 px-4 py-4 transition-colors duration-[120ms] hover:bg-surface-2"
             >
               <div className="flex-1">
                 <h2 className="font-medium">

@@ -24,7 +24,14 @@ export function DetailsForm({service, practitioner, date, time}: Props) {
   const [state, action, pending] = useActionState(createBookingAction, EMPTY)
 
   return (
-    <form action={action} className="mt-6">
+    /*
+      The fields are capped, and this is not the reading measure the brief
+      rules out. A name field a thousand pixels wide is not more usable for
+      being wider -- an input should be about as long as what goes in it, or
+      it reads as an invitation to type an essay. The panels and tables
+      around it still run to the container.
+    */
+    <form action={action} className="mt-5 max-w-xl">
       {/* The chosen appointment travels with the form as well as in the URL. */}
       <input type="hidden" name="service" value={service} />
       <input type="hidden" name="practitioner" value={practitioner} />
@@ -32,7 +39,7 @@ export function DetailsForm({service, practitioner, date, time}: Props) {
       <input type="hidden" name="time" value={time} />
 
       {state.errors?.slot ? (
-        <p role="alert" className="mb-6 border-2 border-danger px-4 py-3 text-sm text-danger">
+        <p role="alert" className="mb-6 border-l-2 border-cancelled bg-surface px-4 py-3 text-sm text-cancelled">
           {state.errors.slot}
         </p>
       ) : null}
@@ -68,7 +75,7 @@ export function DetailsForm({service, practitioner, date, time}: Props) {
       <button
         type="submit"
         disabled={pending}
-        className="mt-8 border-2 border-accent bg-accent px-5 py-2.5 font-medium text-accent-ink transition-opacity duration-[120ms] disabled:opacity-60"
+        className="mt-6 border-2 border-accent bg-accent px-5 py-2.5 font-medium text-accent-ink transition-opacity duration-[120ms] disabled:opacity-60"
       >
         {pending ? 'Confirming…' : 'Confirm appointment'}
       </button>
@@ -114,14 +121,14 @@ function Field({
         name={name}
         aria-describedby={describedBy}
         aria-invalid={error ? true : undefined}
-        className={`mt-2 w-full border bg-surface px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-          error ? 'border-danger' : 'border-line'
+        className={`mt-2 w-full border bg-surface px-3 py-2 ${
+          error ? 'border-cancelled' : 'border-line-strong'
         }`}
         {...input}
       />
 
       {error ? (
-        <p id={errorId} className="mt-1 text-sm text-danger">
+        <p id={errorId} className="mt-1 text-sm text-cancelled">
           {error}
         </p>
       ) : null}

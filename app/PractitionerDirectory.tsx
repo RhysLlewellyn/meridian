@@ -69,7 +69,7 @@ export function PractitionerDirectory({practitioners, specialties, today}: Props
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Name or specialty"
-            className="w-52 border border-line bg-surface px-2 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="w-52 border border-line-strong bg-surface px-2 py-1.5 text-sm"
           />
         </div>
 
@@ -105,13 +105,13 @@ export function PractitionerDirectory({practitioners, specialties, today}: Props
       </div>
 
       {shown.length === 0 ? (
-        <p className="mt-4 border border-line px-4 py-6 text-sm text-muted">
+        <p className="mt-4 border border-line bg-surface px-4 py-6 text-sm text-muted">
           No practitioners match that. Clear the search, or choose “All practitioners”.
         </p>
       ) : (
         <ul className="mt-4 grid border-t border-l border-line sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((person) => (
-            <li key={person.id} className="flex flex-col border-r border-b border-line p-4">
+            <li key={person.id} className="flex flex-col border-r border-b border-line bg-surface p-4">
               <div className="flex items-start gap-3">
                 {/*
                   Initials, not a photograph. There is no real Nadia Okafor,
@@ -144,7 +144,7 @@ export function PractitionerDirectory({practitioners, specialties, today}: Props
               </ul>
 
               <div className="mt-auto border-t border-line pt-3">
-                <p className="text-xs tracking-[0.06em] text-muted uppercase">
+                <p className="font-mono text-[0.625rem] tracking-[0.1em] text-muted uppercase">
                   Next available
                 </p>
                 {person.next ? (
@@ -160,7 +160,7 @@ export function PractitionerDirectory({practitioners, specialties, today}: Props
                     */}
                     <Link
                       href={`/book/${person.next.serviceSlug}/${person.slug}?date=${person.next.date}`}
-                      className="border border-line px-3 py-1.5 text-sm whitespace-nowrap transition-colors duration-[120ms] hover:border-accent hover:bg-surface-2"
+                      className="border border-line-strong px-3 py-1.5 text-sm whitespace-nowrap transition-colors duration-[120ms] hover:border-accent hover:bg-surface-2"
                     >
                       See times
                       <span className="sr-only"> with {person.name}</span>
@@ -194,10 +194,10 @@ function Chip({
       type="button"
       aria-pressed={pressed}
       onClick={onClick}
-      className={`border px-3 py-1.5 text-sm transition-colors duration-[120ms] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+      className={`border px-3 py-1.5 text-sm transition-colors duration-[120ms] ${
         pressed
           ? 'border-accent bg-accent font-medium text-accent-ink'
-          : 'border-line hover:bg-surface-2'
+          : 'border-line-strong text-ink-2 hover:bg-surface-2 hover:text-ink'
       }`}
     >
       {children}

@@ -10,7 +10,7 @@ import {
 } from '../../../src/availability/time.ts'
 import {getDb} from '../../../src/db/index.ts'
 import {formatDateWithYear, formatDuration, formatPrice} from '../../../src/format.ts'
-import {SiteHeader} from '../../SiteHeader.tsx'
+import {AppShell} from '../../AppShell.tsx'
 import {CancelForm} from './CancelForm.tsx'
 
 export const dynamic = 'force-dynamic'
@@ -30,39 +30,44 @@ export default async function ManageBooking({params}: Props) {
   const minutes = (detail.endsAt.getTime() - detail.startsAt.getTime()) / 60_000
 
   return (
-    <>
-      <SiteHeader />
+    // The second of the two prose-shaped screens the brief keeps a measure on.
+    <AppShell measure title="Your appointment" meta={detail.reference}>
+      <div className="flex flex-wrap items-center gap-3">
+        {/*
+          Status is stated in words and marked with a border and a line
+          through it, not carried by colour alone. Printed in greyscale, or
+          read aloud, it still says which of the two this is.
+        */}
+        <p
+          className={`inline-block border px-2 py-0.5 font-mono text-[0.625rem] tracking-[0.1em] uppercase ${
+            cancelled
+              ? 'border-cancelled text-cancelled line-through'
+              : 'border-accent text-accent'
+          }`}
+        >
+          {cancelled ? 'Cancelled' : 'Confirmed'}
+        </p>
+        <p className="text-sm text-ink-2">
+          {cancelled
+            ? 'The time has been released and is available to book again.'
+            : `Booked for ${detail.clientName}.`}
+        </p>
+      </div>
 
-      <main id="main" tabIndex={-1} className="focus:outline-none mx-auto w-full max-w-5xl px-6 py-8">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-5">
-          <h1 className="text-2xl font-medium">Your appointment</h1>
+      {cancelled && detail.cancellationReason ? (
+        <p className="mt-4 border-l-2 border-cancelled bg-surface px-4 py-3 text-sm text-cancelled">
+          Cancelled — {detail.cancellationReason}.
+        </p>
+      ) : null}
 
-          {/*
-            Status is stated in words and marked with a border weight, not
-            carried by colour alone. Printed in greyscale, or read aloud, it
-            still says which of the two this is.
-          */}
-          <p
-            className={`inline-block border-2 px-3 py-1 text-sm font-medium ${
-              cancelled ? 'border-danger text-danger' : 'border-accent text-accent'
-            }`}
+      <div className="mt-4 grid items-start gap-4 md:grid-cols-[1fr_15rem]">
+          <section
+            aria-labelledby="detail-heading"
+            className="min-w-0 border border-line bg-surface"
           >
-            {cancelled ? 'Cancelled' : 'Confirmed'}
-          </p>
-        </div>
-
-        {cancelled && detail.cancellationReason ? (
-          <p className="mt-5 border-2 border-danger px-4 py-3 text-sm text-danger">
-            Cancelled — {detail.cancellationReason}. The time has been released and is
-            available to book again.
-          </p>
-        ) : null}
-
-        <div className="mt-6 grid items-start gap-8 lg:grid-cols-[1fr_17rem]">
-          <section aria-labelledby="detail-heading" className="min-w-0 border border-line">
             <h2
               id="detail-heading"
-              className="border-b border-line bg-surface-2 px-4 py-2 font-mono text-xs tracking-[0.14em] text-muted uppercase"
+              className="border-b border-line bg-ground px-4 py-2 font-mono text-xs tracking-[0.12em] text-muted uppercase"
             >
               Appointment
             </h2>
@@ -84,8 +89,8 @@ export default async function ManageBooking({params}: Props) {
             </dl>
           </section>
 
-          <aside className="border border-line">
-            <h2 className="border-b border-line bg-surface-2 px-4 py-2 font-mono text-xs tracking-[0.14em] text-muted uppercase">
+          <aside className="border border-line bg-surface">
+            <h2 className="border-b border-line bg-ground px-4 py-2 font-mono text-xs tracking-[0.12em] text-muted uppercase">
               {cancelled ? 'Next' : 'Manage'}
             </h2>
             <div className="px-4 py-3 text-sm">
@@ -99,7 +104,7 @@ export default async function ManageBooking({params}: Props) {
               ) : (
                 <Link
                   href="/book"
-                  className="block border-2 border-accent bg-accent px-4 py-2 text-center font-medium text-accent-ink transition-colors duration-[120ms] hover:border-ink hover:bg-ink"
+                  className="block border-2 border-accent bg-accent px-4 py-2 text-center font-medium text-accent-ink transition-colors duration-[120ms] hover:border-ink hover:bg-ink hover:text-ground"
                 >
                   Book another appointment
                 </Link>
@@ -121,9 +126,8 @@ export default async function ManageBooking({params}: Props) {
               ) : null}
             </div>
           </aside>
-        </div>
-      </main>
-    </>
+      </div>
+    </AppShell>
   )
 }
 
@@ -140,7 +144,7 @@ function Row({
 }) {
   return (
     <div className="flex flex-wrap gap-x-4 border-b border-line py-2 first:pt-0 last:border-0 last:pb-0">
-      <dt className="w-28 shrink-0 text-xs tracking-[0.06em] text-muted uppercase">
+      <dt className="w-28 shrink-0 font-mono text-[0.625rem] tracking-[0.1em] text-muted uppercase">
         {label}
       </dt>
       <dd className={`${tabular || mono ? 'tabular' : ''} ${mono ? 'font-mono font-medium' : ''}`}>

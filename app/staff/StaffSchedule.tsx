@@ -7,6 +7,7 @@ import {
   today,
 } from '../../src/availability/query.ts'
 import {formatTime, shiftDate} from '../../src/availability/time.ts'
+import {AppShell} from '../AppShell.tsx'
 import {CancelForm} from '../booking/[reference]/CancelForm.tsx'
 import {getDb} from '../../src/db/index.ts'
 import {formatDate, formatDateShort, formatDuration} from '../../src/format.ts'
@@ -58,122 +59,91 @@ export async function StaffSchedule({practitionerSlug, date: dateParam, open}: P
   }
 
   return (
-    /*
-      A fixed 11rem sidebar is right at a desk and wrong on a phone, where it
-      was taking nearly half the viewport and squeezing the table off the
-      right-hand edge. It becomes a bar across the top below `lg`.
-    */
-    <div className="flex min-h-screen flex-col lg:flex-row">
-      <StaffNav />
+    <AppShell current="schedule" title="Schedule" meta={formatDate(date)}>
+      <dl className="grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-4">
+        <Stat label="Appointments" value={confirmed.length} />
+        <Stat label="Practitioners in" value={onShift.length} />
+        <Stat label="Hours booked" value={(minutes / 60).toFixed(1)} />
+        <Stat label="Cancellations" value={cancelled.length} />
+      </dl>
 
-      <main
-        id="main"
-        tabIndex={-1}
-        className="focus:outline-none min-w-0 flex-1 px-4 py-5 sm:px-6 sm:py-6"
-      >
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h1 className="text-xl font-medium">Schedule</h1>
-          <p className="tabular text-sm text-muted">{formatDate(date)}</p>
-        </div>
-
-        <dl className="mt-4 grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-4">
-          <Stat label="Appointments" value={confirmed.length} />
-          <Stat label="Practitioners in" value={onShift.length} />
-          <Stat label="Hours booked" value={(minutes / 60).toFixed(1)} />
-          <Stat label="Cancellations" value={cancelled.length} />
-        </dl>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Link
-            href={href({date: shiftDate(date, -1)})}
-            className="border border-line px-3 py-1.5 text-sm transition-colors duration-[120ms] hover:bg-surface-2"
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <DayLink href={href({date: shiftDate(date, -1)})}>
+          ← {formatDateShort(shiftDate(date, -1))}
+        </DayLink>
+        <form method="get" className="flex items-center gap-2">
+          <label htmlFor="staff-date" className="sr-only">
+            Jump to date
+          </label>
+          <input
+            id="staff-date"
+            type="date"
+            name="date"
+            defaultValue={date}
+            className="tabular border border-line-strong bg-surface px-2 py-1.5 text-sm"
+          />
+          <button
+            type="submit"
+            className="border border-line-strong px-3 py-1.5 text-sm transition-colors duration-[120ms] hover:bg-surface-2"
           >
-            ← {formatDateShort(shiftDate(date, -1))}
-          </Link>
-          <form method="get" className="flex items-center gap-2">
-            <label htmlFor="staff-date" className="sr-only">
-              Jump to date
-            </label>
-            <input
-              id="staff-date"
-              type="date"
-              name="date"
-              defaultValue={date}
-              className="tabular border border-line bg-surface px-2 py-1.5 text-sm"
-            />
-            <button
-              type="submit"
-              className="border border-line px-3 py-1.5 text-sm transition-colors duration-[120ms] hover:bg-surface-2"
-            >
-              Go
-            </button>
-          </form>
-          <Link
-            href={href({date: shiftDate(date, 1)})}
-            className="border border-line px-3 py-1.5 text-sm transition-colors duration-[120ms] hover:bg-surface-2"
-          >
-            {formatDateShort(shiftDate(date, 1))} →
-          </Link>
-          <Link
-            href={href({date: today()})}
-            className="border border-line px-3 py-1.5 text-sm transition-colors duration-[120ms] hover:bg-surface-2"
-          >
-            Today
-          </Link>
-        </div>
+            Go
+          </button>
+        </form>
+        <DayLink href={href({date: shiftDate(date, 1)})}>
+          {formatDateShort(shiftDate(date, 1))} →
+        </DayLink>
+        <DayLink href={href({date: today()})}>Today</DayLink>
+      </div>
 
-        {/*
-          The same filter the availability engine understands: all
-          practitioners, or one. It is a row of links rather than a select,
-          because the current state has to be visible without opening anything.
-        */}
-        <nav aria-label="Filter by practitioner" className="mt-3 flex flex-wrap gap-2">
-          <Chip href={`/staff?date=${date}`} active={!practitionerSlug}>
-            All practitioners
+      {/*
+        The same filter the availability engine understands: all
+        practitioners, or one. It is a row of links rather than a select,
+        because the current state has to be visible without opening anything.
+      */}
+      <nav aria-label="Filter by practitioner" className="mt-3 flex flex-wrap gap-1.5">
+        <Chip href={`/staff?date=${date}`} active={!practitionerSlug}>
+          All practitioners
+        </Chip>
+        {everybody.map((person) => (
+          <Chip
+            key={person.id}
+            href={`/staff/${person.slug}?date=${date}`}
+            active={person.slug === practitionerSlug}
+          >
+            {person.name}
           </Chip>
-          {everybody.map((person) => (
-            <Chip
-              key={person.id}
-              href={`/staff/${person.slug}?date=${date}`}
-              active={person.slug === practitionerSlug}
-            >
-              {person.name}
-            </Chip>
-          ))}
-        </nav>
+        ))}
+      </nav>
 
-        {bookings.length === 0 ? (
-          <p className="mt-6 border border-line px-4 py-6 text-sm text-muted">
-            Nothing booked on {formatDate(date)}.
-          </p>
-        ) : (
-          /*
-            Wide content scrolls inside its own container. A table of five
-            columns cannot fit a 390px viewport at a readable size, and the
-            alternative -- letting the document scroll sideways -- hides the
-            status and the row link off the right-hand edge with nothing to
-            say they are there.
-          */
-          <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[34rem] border-collapse text-sm">
+      {bookings.length === 0 ? (
+        <p className="mt-3 border border-line bg-surface px-4 py-6 text-sm text-muted">
+          Nothing booked on {formatDate(date)}.
+        </p>
+      ) : (
+        /*
+          Wide content scrolls inside its own container. A table of five
+          columns cannot fit a 390px viewport at a readable size, and the
+          alternative -- letting the document scroll sideways -- hides the
+          status and the row link off the right-hand edge with nothing to
+          say they are there.
+        */
+        <div className="mt-3 overflow-x-auto border border-line">
+          <table className="w-full min-w-[38rem] border-collapse bg-surface text-sm">
             <caption className="sr-only">
               Appointments on {formatDate(date)}, earliest first
             </caption>
             <thead>
-              <tr className="border-y border-line text-left text-muted">
-                <th scope="col" className="py-2 pr-3 font-medium">
-                  Time
-                </th>
-                <th scope="col" className="py-2 pr-3 font-medium">
-                  Client
-                </th>
-                <th scope="col" className="py-2 pr-3 font-medium">
-                  Practitioner and service
-                </th>
-                <th scope="col" className="py-2 pr-3 font-medium">
-                  Status
-                </th>
-                <th scope="col" className="py-2 font-medium">
+              <tr className="bg-ground text-left">
+                {['Time', 'Client', 'Practitioner and service', 'Status'].map((label) => (
+                  <th
+                    key={label}
+                    scope="col"
+                    className="border-b border-line px-3 py-2 font-mono text-[0.625rem] font-medium tracking-[0.12em] text-muted uppercase"
+                  >
+                    {label}
+                  </th>
+                ))}
+                <th scope="col" className="border-b border-line px-3 py-2">
                   <span className="sr-only">Detail</span>
                 </th>
               </tr>
@@ -182,22 +152,24 @@ export async function StaffSchedule({practitionerSlug, date: dateParam, open}: P
               {bookings.map((row) => (
                 <tr
                   key={row.reference}
-                  className={`border-b border-line ${
-                    row.reference === selected?.reference ? 'bg-surface-2' : ''
+                  className={`border-b border-line transition-colors duration-[120ms] last:border-b-0 ${
+                    row.reference === selected?.reference
+                      ? 'bg-surface-2'
+                      : 'hover:bg-surface-2'
                   }`}
                 >
-                  <td className="tabular py-2 pr-3 align-top whitespace-nowrap">
+                  <td className="tabular px-3 py-2 align-top font-mono whitespace-nowrap">
                     {formatTime(row.startsAt)}–{formatTime(row.endsAt)}
                   </td>
-                  <td className="py-2 pr-3 align-top">{row.clientName}</td>
-                  <td className="py-2 pr-3 align-top">
+                  <td className="px-3 py-2 align-top">{row.clientName}</td>
+                  <td className="px-3 py-2 align-top text-ink-2">
                     {row.practitionerName}
                     <span className="block text-muted">{row.serviceName}</span>
                   </td>
-                  <td className="py-2 pr-3 align-top">
+                  <td className="px-3 py-2 align-top">
                     <StatusBadge status={row.status} />
                   </td>
-                  <td className="py-2 align-top text-right">
+                  <td className="px-3 py-2 align-top text-right">
                     <Link
                       href={
                         row.reference === selected?.reference
@@ -214,38 +186,66 @@ export async function StaffSchedule({practitionerSlug, date: dateParam, open}: P
               ))}
             </tbody>
           </table>
-          </div>
-        )}
+        </div>
+      )}
 
-        {selected ? <DetailPanel booking={selected} closeHref={href({})} /> : null}
-      </main>
-    </div>
+      {/*
+        The three states differ in border and in the line through the word as
+        well as in hue, which is what keeps the day readable in greyscale.
+      */}
+      <p className="mt-3 flex flex-wrap gap-x-5 gap-y-1 font-mono text-[0.625rem] tracking-[0.1em] text-muted uppercase">
+        <span>
+          <span className="text-ink">Confirmed</span> solid border
+        </span>
+        <span>
+          <span className="text-ink">Cancelled</span> struck through
+        </span>
+      </p>
+
+      {selected ? <DetailPanel booking={selected} closeHref={href({})} /> : null}
+    </AppShell>
+  )
+}
+
+/** Previous day, next day, today. */
+function DayLink({href, children}: {href: string; children: React.ReactNode}) {
+  return (
+    <Link
+      href={href}
+      className="tabular border border-line-strong px-3 py-1.5 text-sm whitespace-nowrap transition-colors duration-[120ms] hover:bg-surface-2"
+    >
+      {children}
+    </Link>
   )
 }
 
 function Stat({label, value}: {label: string; value: number | string}) {
   return (
-    <div className="bg-surface px-3 py-3">
-      <dt className="text-xs tracking-[0.08em] text-muted uppercase">{label}</dt>
-      <dd className="tabular mt-1 text-2xl font-medium">{value}</dd>
+    <div className="bg-surface px-4 py-3">
+      <dd className="tabular text-2xl leading-none font-semibold tracking-[-0.02em]">
+        {value}
+      </dd>
+      <dt className="mt-1.5 font-mono text-[0.625rem] tracking-[0.1em] text-muted uppercase">
+        {label}
+      </dt>
     </div>
   )
 }
 
 /**
- * Status carries in three ways at once — the word, the border weight and the
- * fill — so it survives greyscale, a colour-blind reader and a screen reader.
- * Colour alone would carry it for none of them.
+ * Status carries in three ways at once — the word, the border and the line
+ * through it — so it survives greyscale, a colour-blind reader and a screen
+ * reader. Colour alone would carry it for none of them.
  */
 function StatusBadge({status}: {status: 'confirmed' | 'cancelled'}) {
+  const shared =
+    'inline-block border px-2 py-0.5 font-mono text-[0.625rem] tracking-[0.1em] uppercase'
   return status === 'cancelled' ? (
-    <span className="border-2 border-danger px-2 py-0.5 text-xs font-medium text-danger">
+    <span className={`${shared} border-cancelled text-cancelled line-through`}>
       Cancelled
     </span>
   ) : (
-    <span className="border border-line bg-surface-2 px-2 py-0.5 text-xs font-medium">
-      Confirmed
-    </span>
+    <span className={`${shared} border-accent text-accent`}>Confirmed</span>
   )
 }
 
@@ -264,8 +264,8 @@ function Chip({
       aria-current={active ? 'true' : undefined}
       className={`border px-3 py-1.5 text-sm transition-colors duration-[120ms] ${
         active
-          ? 'border-accent bg-accent text-accent-ink'
-          : 'border-line hover:bg-surface-2'
+          ? 'border-accent bg-accent font-medium text-accent-ink'
+          : 'border-line-strong text-ink-2 hover:bg-surface-2 hover:text-ink'
       }`}
     >
       {children}
@@ -283,7 +283,10 @@ async function DetailPanel({
   const started = booking.startsAt <= new Date()
 
   return (
-    <section aria-label={`Appointment ${booking.reference}`} className="mt-6 border-2 border-line p-4">
+    <section
+      aria-label={`Appointment ${booking.reference}`}
+      className="mt-4 border border-line bg-surface p-4"
+    >
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="font-medium">
           {booking.clientName}
@@ -332,46 +335,5 @@ async function DetailPanel({
         <CancelForm reference={booking.reference} />
       ) : null}
     </section>
-  )
-}
-
-/**
- * The sidebar the spec asks for, with three of its four entries honestly
- * unbuilt. A demo that links to Appointments, Practitioners and Settings and
- * 404s on all three is worse than one that says what is here.
- */
-function StaffNav() {
-  return (
-    <nav
-      aria-label="Staff sections"
-      className="shrink-0 border-b border-line bg-surface-2 px-3 py-3 lg:w-44 lg:border-r lg:border-b-0 lg:py-6"
-    >
-      <p className="px-2 font-mono text-xs tracking-[0.14em] text-muted uppercase">
-        Meridian
-      </p>
-      <ul className="mt-3 flex flex-wrap gap-x-1 text-sm lg:mt-6 lg:block lg:space-y-1">
-        <li>
-          <span
-            aria-current="page"
-            className="block border-b-2 border-accent bg-surface px-2 py-1.5 font-medium lg:border-b-0 lg:border-l-2"
-          >
-            Schedule
-          </span>
-        </li>
-        {['Appointments', 'Practitioners', 'Settings'].map((label) => (
-          <li key={label}>
-            <span className="block px-2 py-1.5 text-muted">{label}</span>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-3 px-2 text-xs text-muted lg:mt-6">
-        Schedule only in this demo. The other three are not built.
-      </p>
-      <p className="mt-3 px-2 text-xs lg:mt-6">
-        <Link href="/" className="inline-block py-1.5 underline underline-offset-4">
-          Public site
-        </Link>
-      </p>
-    </nav>
   )
 }

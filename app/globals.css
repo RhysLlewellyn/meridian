@@ -3,40 +3,65 @@
 /**
  * Tokens. Everything visual comes from here.
  *
- * Deliberately not Fieldnote: that was warm paper and serifs, this is an
- * interface. Cool, dense, bordered rather than shadowed.
+ * Meridian is dark, and only dark. It is a staff-first scheduling platform --
+ * the patient booking flow is one surface of the same product rather than a
+ * separate website -- and a tool that lives on a front-desk monitor all day
+ * should commit to one register instead of hedging with a toggle.
+ *
+ * Depth comes from layered surfaces and hairlines. There are no shadows, no
+ * gradients and no glow anywhere in this build: that combination is the
+ * signature of generated dark UI, and avoiding it is the point.
  */
 @theme {
-  --color-surface: #fbfbfc;
-  --color-surface-2: #f2f3f5;
-  --color-line: #dfe1e5;
-  --color-ink: #101114;
-  --color-ink-2: #43474e;
+  --color-ground: #0e1316; /* the page */
+  --color-surface: #151c20; /* panels, table rows */
+  --color-surface-2: #1c2529; /* hover, active row, wells */
+  --color-line: #2b3539; /* hairlines between rows and panels */
   /*
-   * The brief specifies #767C86. It is the one token in that palette which
-   * fails WCAG AA: 4.06:1 on the surface and 3.78:1 on surface-2, against a
-   * requirement of 4.5:1, at every size this interface uses it. Darkened
-   * along its own hue until it clears on both grounds -- 4.88 and 4.54 --
-   * which is the smallest change that keeps the colour the brief asked for
-   * and the accessibility the brief also asked for.
+   * Control borders, and the one token raised from the brief's palette for a
+   * reason other than text. The brief specifies #3A464B, which is 1.77:1
+   * against the surface it sits on. A slot button's border is what identifies
+   * it as a control -- the text inside it is legible either way -- so WCAG
+   * 1.4.11 asks 3:1 of it, and neither axe nor Lighthouse checks that. Raised
+   * along its own hue until it clears on all three grounds: 3.61, 3.33, 3.01.
    */
-  --color-muted: #6a6f79;
+  --color-line-strong: #5d7078;
 
-  --color-accent: #0f5257; /* deep teal - actions, selected state */
-  --color-accent-ink: #ffffff;
-  --color-warn: #8a5a00; /* held / pending */
-  --color-danger: #8c2f2f; /* cancelled */
+  --color-ink: #e9eef0; /* 15.98:1 on ground */
+  --color-ink-2: #afbbc0; /* 9.52:1 */
+  /*
+   * The brief specifies #7E8C92. Against the ground and the surface it is
+   * comfortable -- 5.39 and 4.97 -- but on surface-2, which is the hover fill
+   * behind every table row and the fill behind every unavailable slot, it
+   * lands at 4.497:1 against a requirement of 4.5. Three thousandths, and it
+   * still fails. Lightened along its own hue to clear on all three grounds:
+   * 5.53, 5.10, 4.62.
+   */
+  --color-muted: #808e94;
+
+  --color-accent: #4aa79c; /* actions, selected, confirmed. 6.50 / 5.99 / 5.42 */
+  --color-accent-ink: #06100f; /* 6.70:1 on the accent */
+  --color-pending: #c79340; /* 6.83 / 6.30 / 5.70 */
+  /*
+   * The brief specifies #C4635C, which clears on the ground at 4.71 and fails
+   * on both panel surfaces -- 4.34 and 3.93. Cancellations are read in the
+   * schedule table, which is surface, and in its hover state, which is
+   * surface-2, so the ground is the one place this colour never appears.
+   * Lightened along its own hue: 5.57, 5.14, 4.65.
+   */
+  --color-cancelled: #cb746e;
+  --color-focus: #7fd3c7; /* focus ring only. 10.72 on ground, 9.88 on surface */
 
   --font-sans: var(--font-archivo), system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 }
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 body {
-  background: var(--color-surface);
+  background: var(--color-ground);
   color: var(--color-ink);
   font-family: var(--font-sans);
   line-height: 1.5;
@@ -48,6 +73,16 @@ body {
  */
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/**
+ * One ring, everywhere, in the one colour reserved for it. A focus outline
+ * drawn in the accent would be indistinguishable from a selected slot, which
+ * is the state a keyboard user most needs to tell it apart from.
+ */
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

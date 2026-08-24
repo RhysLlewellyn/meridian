@@ -14,15 +14,14 @@ export default async function ChooseService() {
   const services = await listServices(getDb())
 
   return (
-    <BookingFrame step={1} selection={{}}>
-      <h1 className="text-xl font-medium">Choose a service</h1>
-      <p className="mt-1 text-ink-2">
+    <BookingFrame step={1} title="Choose a service" selection={{}}>
+      <p className="text-ink-2">
         Not sure? An initial assessment is the right first appointment for anything new.
       </p>
 
-      <ul className="mt-5 grid border-t border-l border-line sm:grid-cols-2">
+      <ul className="mt-4 grid border-t border-l border-line sm:grid-cols-2 xl:grid-cols-3">
         {services.map((service) => (
-          <li key={service.id} className="border-r border-b border-line">
+          <li key={service.id} className="border-r border-b border-line bg-surface">
             <Link
               href={`/book/${service.slug}`}
               className="flex h-full flex-col p-4 transition-colors duration-[120ms] hover:bg-surface-2"
