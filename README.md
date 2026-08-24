@@ -4,7 +4,7 @@ A booking platform for a multi-practitioner physiotherapy clinic. Three practiti
 genuinely different working patterns, five appointment types, and an availability engine that
 has to reconcile them without ever double-booking anybody.
 
-**Live:** https://meridian-rhys-llewellyn1.vercel.app
+**Live:** https://meridian-rosy.vercel.app
 
 Meridian is an invented clinic and the practitioners are fictional. It is one of my own demo
 builds, not client work — there is no real Nadia Okafor, and nothing on the site is a
@@ -43,7 +43,7 @@ doing that work.
 Agentic Browsing is the fifth category in Lighthouse 13, replacing PWA. It scores what an
 agent rather than a person can make of the page: the accessibility tree it would have to
 navigate, layout stability, and whether the site publishes an
-[llms.txt](https://meridian-rhys-llewellyn1.vercel.app/llms.txt). Meridian's carries the
+[llms.txt](https://meridian-rosy.vercel.app/llms.txt). Meridian's carries the
 service list out of the database rather than a hand-written summary that would drift the
 first time a price changed, and its first paragraph says the clinic is invented — an agent
 acting for somebody who actually needs a physiotherapist should be able to tell in one line
