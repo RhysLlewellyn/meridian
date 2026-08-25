@@ -107,7 +107,14 @@ function Field({
     <div className="mt-5">
       <label htmlFor={name} className="block text-sm font-medium">
         {label}
-        {input.required ? null : <span className="ml-2 text-muted">(optional)</span>}
+        {input.required ? null : (
+          <>
+            {/* Spoken as a comma, drawn as a gap. Without it the name computes
+                to "Phone number(optional)" and is read as one token. */}
+            <span className="sr-only">, </span>
+            <span className="ml-2 text-muted">(optional)</span>
+          </>
+        )}
       </label>
 
       {hint ? (
@@ -121,14 +128,20 @@ function Field({
         name={name}
         aria-describedby={describedBy}
         aria-invalid={error ? true : undefined}
-        className={`mt-2 w-full border bg-surface px-3 py-2 ${
+        className={`mt-2 w-full border bg-surface px-3 py-2 pointer-coarse:py-2.5 ${
           error ? 'border-cancelled' : 'border-line-strong'
         }`}
         {...input}
       />
 
+      {/*
+        `role="alert"`, like the slot error above the form and the one in
+        CancelForm. The action re-renders in place — no navigation, no focus
+        move — so without it the message appears on screen and is announced to
+        nobody.
+      */}
       {error ? (
-        <p id={errorId} className="mt-1 text-sm text-cancelled">
+        <p id={errorId} role="alert" className="mt-1 text-sm text-cancelled">
           {error}
         </p>
       ) : null}

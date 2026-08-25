@@ -61,10 +61,14 @@ export async function StaffSchedule({practitionerSlug, date: dateParam, open}: P
   return (
     <AppShell current="schedule" title="Schedule" meta={formatDate(date)}>
       <dl className="grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-4">
-        <Stat label="Appointments" value={confirmed.length} />
-        <Stat label="Practitioners in" value={onShift.length} />
+        <Stat label="Appointments" one="Appointment" value={confirmed.length} />
+        <Stat label="Practitioners in" one="Practitioner in" value={onShift.length} />
+        {/*
+          No singular: this one is measured rather than counted, and "1.0 hours"
+          is what a decimal reads as. It is the count that has to agree.
+        */}
         <Stat label="Hours booked" value={(minutes / 60).toFixed(1)} />
-        <Stat label="Cancellations" value={cancelled.length} />
+        <Stat label="Cancellations" one="Cancellation" value={cancelled.length} />
       </dl>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -80,11 +84,11 @@ export async function StaffSchedule({practitionerSlug, date: dateParam, open}: P
             type="date"
             name="date"
             defaultValue={date}
-            className="tabular border border-line-strong bg-surface px-2 py-1.5 text-sm"
+            className="tabular border border-line-strong bg-surface px-2 py-1.5 text-sm pointer-coarse:py-3"
           />
           <button
             type="submit"
-            className="border border-line-strong px-3 py-1.5 text-sm transition-colors duration-[120ms] hover:bg-surface-2"
+            className="border border-line-strong px-3 py-1.5 text-sm transition-colors duration-[120ms] pointer-coarse:py-3 hover:bg-surface-2"
           >
             Go
           </button>
@@ -127,65 +131,81 @@ export async function StaffSchedule({practitionerSlug, date: dateParam, open}: P
           status and the row link off the right-hand edge with nothing to
           say they are there.
         */
-        <div className="mt-3 overflow-x-auto border border-line">
-          <table className="w-full min-w-[38rem] border-collapse bg-surface text-sm">
-            <caption className="sr-only">
-              Appointments on {formatDate(date)}, earliest first
-            </caption>
-            <thead>
-              <tr className="bg-ground text-left">
-                {['Time', 'Client', 'Practitioner and service', 'Status'].map((label) => (
-                  <th
-                    key={label}
-                    scope="col"
-                    className="border-b border-line px-3 py-2 font-mono text-[0.625rem] font-medium tracking-[0.12em] text-muted uppercase"
-                  >
-                    {label}
-                  </th>
-                ))}
-                <th scope="col" className="border-b border-line px-3 py-2">
-                  <span className="sr-only">Detail</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.map((row) => (
-                <tr
-                  key={row.reference}
-                  className={`border-b border-line transition-colors duration-[120ms] last:border-b-0 ${
-                    row.reference === selected?.reference
-                      ? 'bg-surface-2'
-                      : 'hover:bg-surface-2'
-                  }`}
-                >
-                  <td className="tabular px-3 py-2 align-top font-mono whitespace-nowrap">
-                    {formatTime(row.startsAt)}–{formatTime(row.endsAt)}
-                  </td>
-                  <td className="px-3 py-2 align-top">{row.clientName}</td>
-                  <td className="px-3 py-2 align-top text-ink-2">
-                    {row.practitionerName}
-                    <span className="block text-muted">{row.serviceName}</span>
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <StatusBadge status={row.status} />
-                  </td>
-                  <td className="px-3 py-2 align-top text-right">
-                    <Link
-                      href={
-                        row.reference === selected?.reference
-                          ? href({})
-                          : href({booking: row.reference})
-                      }
-                      className="inline-block px-1 py-1.5 underline underline-offset-4"
+        <div className="mt-3 border border-line">
+          {/*
+            And this is the line that says so. The container scrolls correctly
+            and silently, which on a phone means a table clipped mid-column and
+            nothing to suggest there is more of it. Hidden from the
+            accessibility tree because it describes a gesture, and a screen
+            reader reads every column either way. Shown below 40rem, which is
+            where 38rem of table plus the page gutter stops fitting.
+          */}
+          <p
+            aria-hidden="true"
+            className="border-b border-line px-3 py-1.5 font-mono text-micro tracking-[0.1em] text-muted uppercase sm:hidden"
+          >
+            Scroll sideways for status →
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[38rem] border-collapse bg-surface text-sm">
+              <caption className="sr-only">
+                Appointments on {formatDate(date)}, earliest first
+              </caption>
+              <thead>
+                <tr className="bg-ground text-left">
+                  {['Time', 'Client', 'Practitioner and service', 'Status'].map((label) => (
+                    <th
+                      key={label}
+                      scope="col"
+                      className="border-b border-line px-3 py-2 font-mono text-micro font-medium tracking-[0.12em] text-muted uppercase"
                     >
-                      {row.reference === selected?.reference ? 'Close' : 'Open'}
-                      <span className="sr-only"> {row.reference}</span>
-                    </Link>
-                  </td>
+                      {label}
+                    </th>
+                  ))}
+                  <th scope="col" className="border-b border-line px-3 py-2">
+                    <span className="sr-only">Detail</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {bookings.map((row) => (
+                  <tr
+                    key={row.reference}
+                    className={`border-b border-line transition-colors duration-[120ms] last:border-b-0 ${
+                      row.reference === selected?.reference
+                        ? 'bg-surface-2'
+                        : 'hover:bg-surface-2'
+                    }`}
+                  >
+                    <td className="tabular px-3 py-2 align-top font-mono whitespace-nowrap">
+                      {formatTime(row.startsAt)}–{formatTime(row.endsAt)}
+                    </td>
+                    <td className="px-3 py-2 align-top">{row.clientName}</td>
+                    <td className="px-3 py-2 align-top text-ink-2">
+                      {row.practitionerName}
+                      <span className="block text-muted">{row.serviceName}</span>
+                    </td>
+                    <td className="px-3 py-2 align-top">
+                      <StatusBadge status={row.status} />
+                    </td>
+                    <td className="px-3 py-2 align-top text-right">
+                      <Link
+                        href={
+                          row.reference === selected?.reference
+                            ? href({})
+                            : href({booking: row.reference})
+                        }
+                        className="inline-block px-1 py-1.5 underline underline-offset-4 pointer-coarse:px-3 pointer-coarse:py-3"
+                      >
+                        {row.reference === selected?.reference ? 'Close' : 'Open'}
+                        <span className="sr-only"> {row.reference}</span>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -193,7 +213,7 @@ export async function StaffSchedule({practitionerSlug, date: dateParam, open}: P
         The three states differ in border and in the line through the word as
         well as in hue, which is what keeps the day readable in greyscale.
       */}
-      <p className="mt-3 flex flex-wrap gap-x-5 gap-y-1 font-mono text-[0.625rem] tracking-[0.1em] text-muted uppercase">
+      <p className="mt-3 flex flex-wrap gap-x-5 gap-y-1 font-mono text-micro tracking-[0.1em] text-muted uppercase">
         <span>
           <span className="text-ink">Confirmed</span> solid border
         </span>
@@ -212,22 +232,37 @@ function DayLink({href, children}: {href: string; children: React.ReactNode}) {
   return (
     <Link
       href={href}
-      className="tabular border border-line-strong px-3 py-1.5 text-sm whitespace-nowrap transition-colors duration-[120ms] hover:bg-surface-2"
+      className="tabular border border-line-strong px-3 py-1.5 text-sm whitespace-nowrap transition-colors duration-[120ms] pointer-coarse:py-3 hover:bg-surface-2"
     >
       {children}
     </Link>
   )
 }
 
-function Stat({label, value}: {label: string; value: number | string}) {
+/**
+ * `dt` before `dd` in the markup, reversed in the display: the term is what a
+ * screen reader needs first and the number is what an eye wants first, and
+ * `flex-col-reverse` is how both get their order without lying about which is
+ * which. A day with one booking says "1 Appointment"; a stat that is measured
+ * rather than counted takes no singular.
+ */
+function Stat({
+  label,
+  one,
+  value,
+}: {
+  label: string
+  one?: string
+  value: number | string
+}) {
   return (
-    <div className="bg-surface px-4 py-3">
+    <div className="flex flex-col-reverse bg-surface px-4 py-3">
+      <dt className="mt-1.5 font-mono text-micro tracking-[0.1em] text-muted uppercase">
+        {one && value === 1 ? one : label}
+      </dt>
       <dd className="tabular text-2xl leading-none font-semibold tracking-[-0.02em]">
         {value}
       </dd>
-      <dt className="mt-1.5 font-mono text-[0.625rem] tracking-[0.1em] text-muted uppercase">
-        {label}
-      </dt>
     </div>
   )
 }
@@ -239,7 +274,7 @@ function Stat({label, value}: {label: string; value: number | string}) {
  */
 function StatusBadge({status}: {status: 'confirmed' | 'cancelled'}) {
   const shared =
-    'inline-block border px-2 py-0.5 font-mono text-[0.625rem] tracking-[0.1em] uppercase'
+    'inline-block border px-2 py-0.5 font-mono text-micro tracking-[0.1em] uppercase'
   return status === 'cancelled' ? (
     <span className={`${shared} border-cancelled text-cancelled line-through`}>
       Cancelled
@@ -262,7 +297,7 @@ function Chip({
     <Link
       href={href}
       aria-current={active ? 'true' : undefined}
-      className={`border px-3 py-1.5 text-sm transition-colors duration-[120ms] ${
+      className={`border px-3 py-1.5 text-sm transition-colors duration-[120ms] pointer-coarse:py-3 ${
         active
           ? 'border-accent bg-accent font-medium text-accent-ink'
           : 'border-line-strong text-ink-2 hover:bg-surface-2 hover:text-ink'
@@ -290,6 +325,9 @@ async function DetailPanel({
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="font-medium">
           {booking.clientName}
+          {/* Spoken as a comma, drawn as a gap. Without it the heading
+              computes to "Esme HollowellMRD-385B". */}
+          <span className="sr-only">, </span>
           <span className="tabular ml-3 font-mono text-sm font-normal text-muted">
             {booking.reference}
           </span>

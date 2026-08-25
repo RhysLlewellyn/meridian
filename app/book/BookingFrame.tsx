@@ -99,7 +99,7 @@ export function BookingFrame({step, title, selection, children}: Props) {
                 <Link
                   href={href}
                   aria-label={spoken}
-                  className="flex h-full items-center gap-2 px-3 py-1.5 text-sm font-medium transition-colors duration-[120ms] hover:bg-surface-2"
+                  className="flex h-full items-center gap-2 px-3 py-1.5 text-sm font-medium transition-colors duration-[120ms] pointer-coarse:py-3 hover:bg-surface-2"
                 >
                   {inner}
                 </Link>
@@ -185,7 +185,7 @@ export function BookingFrame({step, title, selection, children}: Props) {
 function Row({label, value, tabular}: {label: string; value?: string; tabular?: boolean}) {
   return (
     <div className="border-b border-line py-2 first:pt-0 last:border-0 last:pb-0">
-      <dt className="font-mono text-[0.625rem] tracking-[0.1em] text-muted uppercase">
+      <dt className="font-mono text-micro tracking-[0.1em] text-muted uppercase">
         {label}
       </dt>
       <dd className={`mt-0.5 ${value ? (tabular ? 'tabular' : '') : 'text-muted'}`}>

@@ -217,7 +217,7 @@ function WithheldEmail({
 function EmailRow({label, value}: {label: string; value: string}) {
   return (
     <div className="flex flex-wrap gap-x-4 py-1">
-      <dt className="w-20 shrink-0 font-mono text-[0.625rem] tracking-[0.1em] text-muted uppercase">
+      <dt className="w-20 shrink-0 font-mono text-micro tracking-[0.1em] text-muted uppercase">
         {label}
       </dt>
       <dd className="min-w-0 font-mono text-xs break-words text-ink">{value}</dd>
@@ -238,7 +238,7 @@ function Row({
 }) {
   return (
     <div className="flex flex-wrap gap-x-4 border-b border-line py-2 first:pt-0 last:border-0 last:pb-0">
-      <dt className="w-28 shrink-0 font-mono text-[0.625rem] tracking-[0.1em] text-muted uppercase">
+      <dt className="w-28 shrink-0 font-mono text-micro tracking-[0.1em] text-muted uppercase">
         {label}
       </dt>
       <dd className={`${tabular || mono ? 'tabular' : ''} ${mono ? 'font-mono font-medium' : ''}`}>

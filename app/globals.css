@@ -52,6 +52,14 @@
   --color-cancelled: #cb746e;
   --color-focus: #7fd3c7; /* focus ring only. 10.72 on ground, 9.88 on surface */
 
+  /*
+   * The micro label: 10px mono, upper case, wide tracking. It is the eyebrow
+   * over a section, the term in a definition list and the column head in the
+   * schedule -- one step, used a dozen times, and a literal in every one of
+   * them until it was named. The one that had drifted to 11px is folded in.
+   */
+  --text-micro: 0.625rem;
+
   --font-sans: var(--font-archivo), system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 }
@@ -85,6 +93,17 @@ body {
   outline-offset: 2px;
 }
 
+/**
+ * The blanket rule, kept deliberately.
+ *
+ * Nothing in this build moves: every transition is 120ms of colour or opacity,
+ * which carries no vestibular risk, so this rule removes a little feedback
+ * rather than any harm. Scoping it to transforms is not expressible -- CSS
+ * cannot kill a transition by the property it animates -- and the choice is
+ * therefore between a rule that is slightly too broad today and no rule at all
+ * the first time something here does move. Too broad, on a clinical booking
+ * flow, is the right side to be wrong on.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

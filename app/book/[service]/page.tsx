@@ -66,6 +66,9 @@ export default async function ChoosePractitioner({params}: Props) {
               <div className="flex-1">
                 <h2 className="font-medium">
                   {person.name}
+                  {/* Spoken as a comma, drawn as a gap. Without it the heading
+                      computes to "Nadia OkaforMSK Physiotherapist". */}
+                  <span className="sr-only">, </span>
                   <span className="ml-2 font-normal text-muted">{person.title}</span>
                 </h2>
                 <p className="mt-1 text-sm text-ink-2">{person.bio}</p>

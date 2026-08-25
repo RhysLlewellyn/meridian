@@ -39,7 +39,7 @@ export default async function ManageBooking({params}: Props) {
           read aloud, it still says which of the two this is.
         */}
         <p
-          className={`inline-block border px-2 py-0.5 font-mono text-[0.625rem] tracking-[0.1em] uppercase ${
+          className={`inline-block border px-2 py-0.5 font-mono text-micro tracking-[0.1em] uppercase ${
             cancelled
               ? 'border-cancelled text-cancelled line-through'
               : 'border-accent text-accent'
@@ -144,7 +144,7 @@ function Row({
 }) {
   return (
     <div className="flex flex-wrap gap-x-4 border-b border-line py-2 first:pt-0 last:border-0 last:pb-0">
-      <dt className="w-28 shrink-0 font-mono text-[0.625rem] tracking-[0.1em] text-muted uppercase">
+      <dt className="w-28 shrink-0 font-mono text-micro tracking-[0.1em] text-muted uppercase">
         {label}
       </dt>
       <dd className={`${tabular || mono ? 'tabular' : ''} ${mono ? 'font-mono font-medium' : ''}`}>

@@ -69,7 +69,7 @@ export function PractitionerDirectory({practitioners, specialties, today}: Props
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Name or specialty"
-            className="w-52 border border-line-strong bg-surface px-2 py-1.5 text-sm"
+            className="w-52 border border-line-strong bg-surface px-2 py-1.5 text-sm pointer-coarse:py-3"
           />
         </div>
 
@@ -136,7 +136,7 @@ export function PractitionerDirectory({practitioners, specialties, today}: Props
                 {person.specialties.map((name) => (
                   <li
                     key={name}
-                    className="border border-line px-1.5 py-0.5 font-mono text-[0.6875rem] tracking-[0.06em] text-muted uppercase"
+                    className="border border-line px-1.5 py-0.5 font-mono text-micro tracking-[0.06em] text-muted uppercase"
                   >
                     {name}
                   </li>
@@ -144,7 +144,7 @@ export function PractitionerDirectory({practitioners, specialties, today}: Props
               </ul>
 
               <div className="mt-auto border-t border-line pt-3">
-                <p className="font-mono text-[0.625rem] tracking-[0.1em] text-muted uppercase">
+                <p className="font-mono text-micro tracking-[0.1em] text-muted uppercase">
                   Next available
                 </p>
                 {person.next ? (
@@ -160,7 +160,7 @@ export function PractitionerDirectory({practitioners, specialties, today}: Props
                     */}
                     <Link
                       href={`/book/${person.next.serviceSlug}/${person.slug}?date=${person.next.date}`}
-                      className="border border-line-strong px-3 py-1.5 text-sm whitespace-nowrap transition-colors duration-[120ms] hover:border-accent hover:bg-surface-2"
+                      className="border border-line-strong px-3 py-1.5 text-sm whitespace-nowrap transition-colors duration-[120ms] pointer-coarse:py-3 hover:border-accent hover:bg-surface-2"
                     >
                       See times
                       <span className="sr-only"> with {person.name}</span>
@@ -194,7 +194,7 @@ function Chip({
       type="button"
       aria-pressed={pressed}
       onClick={onClick}
-      className={`border px-3 py-1.5 text-sm transition-colors duration-[120ms] ${
+      className={`border px-3 py-1.5 text-sm transition-colors duration-[120ms] pointer-coarse:py-3 ${
         pressed
           ? 'border-accent bg-accent font-medium text-accent-ink'
           : 'border-line-strong text-ink-2 hover:bg-surface-2 hover:text-ink'

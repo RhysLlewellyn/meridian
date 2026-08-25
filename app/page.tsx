@@ -35,7 +35,7 @@ export default async function Home() {
         </p>
         <Link
           href="/book"
-          className="border-2 border-accent bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-colors duration-[120ms] hover:border-ink hover:bg-ink hover:text-ground"
+          className="border-2 border-accent bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-colors duration-[120ms] pointer-coarse:py-3 hover:border-ink hover:bg-ink hover:text-ground"
         >
           Start booking
         </Link>

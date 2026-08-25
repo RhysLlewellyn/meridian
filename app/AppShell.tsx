@@ -116,7 +116,7 @@ function Rail({current}: {current?: NavKey}) {
         <Link
           href="/"
           aria-label="Meridian Physiotherapy"
-          className="flex items-center gap-2.5 transition-opacity duration-[120ms] hover:opacity-80"
+          className="flex items-center gap-2.5 transition-opacity duration-[120ms] pointer-coarse:-my-1.5 pointer-coarse:py-1.5 hover:opacity-80"
         >
           <span
             aria-hidden="true"
@@ -126,7 +126,7 @@ function Rail({current}: {current?: NavKey}) {
           </span>
           <span className="leading-tight">
             <span className="block font-semibold tracking-[-0.01em]">Meridian</span>
-            <span className="block font-mono text-[0.625rem] tracking-[0.14em] text-muted uppercase">
+            <span className="block font-mono text-micro tracking-[0.14em] text-muted uppercase">
               Physiotherapy
             </span>
           </span>
@@ -147,7 +147,7 @@ function Rail({current}: {current?: NavKey}) {
                 <Link
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
-                  className={`block border-transparent px-4 py-2.5 whitespace-nowrap transition-colors duration-[120ms] lg:border-l-2 ${
+                  className={`block border-transparent px-4 py-2.5 whitespace-nowrap transition-colors duration-[120ms] pointer-coarse:py-3 lg:border-l-2 ${
                     active
                       ? 'bg-surface-2 font-medium text-ink lg:border-l-accent'
                       : 'text-ink-2 hover:bg-surface hover:text-ink'

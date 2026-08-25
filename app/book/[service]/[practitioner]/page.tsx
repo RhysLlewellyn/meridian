@@ -119,11 +119,11 @@ export default async function ChooseTime({params, searchParams}: Props) {
             defaultValue={date}
             min={earliest}
             max={latest}
-            className="tabular border border-line-strong bg-surface px-2 py-1.5 text-sm"
+            className="tabular border border-line-strong bg-surface px-2 py-1.5 text-sm pointer-coarse:py-3"
           />
           <button
             type="submit"
-            className="border border-line-strong px-3 py-1.5 text-sm transition-colors duration-[120ms] hover:bg-surface-2"
+            className="border border-line-strong px-3 py-1.5 text-sm transition-colors duration-[120ms] pointer-coarse:py-3 hover:bg-surface-2"
           >
             Go
           </button>
@@ -194,7 +194,7 @@ export default async function ChooseTime({params, searchParams}: Props) {
  * follows on Enter, and only the mouse is stopped by `pointer-events: none`.
  */
 function DayStep({href, label, disabled}: {href: string; label: string; disabled: boolean}) {
-  const shared = 'border border-line-strong px-3 py-1.5 text-sm'
+  const shared = 'border border-line-strong px-3 py-1.5 text-sm pointer-coarse:py-3'
   if (disabled) {
     return <span className={`${shared} text-muted`}>{label}</span>
   }
