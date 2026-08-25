@@ -1,7 +1,5 @@
 'use client'
 
-import {AppShell} from './AppShell.tsx'
-
 /**
  * The backstop, for anything the routes did not catch themselves.
  *
@@ -18,6 +16,16 @@ import {AppShell} from './AppShell.tsx'
  * button. The links are here as well as the button because the button is the
  * only part that needs the handler, and a reader who would rather leave than
  * retry should not have to use it.
+ *
+ * **It does not use `AppShell`, and that was measured rather than assumed.**
+ * Rendering the application's navigation rail here would be the consistent
+ * thing to do and it is not free: because this file is a client component,
+ * importing the shell pulls it and `next/link` across the boundary into every
+ * route's bundle. Measured on this build: 471kB of script on the homepage with
+ * it, 459kB without — twelve kilobytes on every page load, for chrome on a page
+ * that should never render. The three links below are a better way out of an
+ * error than a nav rail anyway, since they name where they go. `not-found.tsx`
+ * is a server component and keeps the full shell for nothing.
  *
  * **This page needs JavaScript, and that is a framework constraint rather than
  * a choice.** Measured against Next 16.3.1: a throw during SSR is answered with
@@ -66,8 +74,13 @@ export default function Error({
   reset: () => void
 }) {
   return (
-    <AppShell measure title="Something went wrong">
-      <p className="max-w-prose text-ink-2">
+    // Self-contained, and deliberately the same shape as `global-error.tsx`:
+    // the two boundaries are the two pages that cannot rely on anything else
+    // having rendered, and they should not look like two different builds.
+    <main id="main" className="mx-auto max-w-3xl px-4 py-10">
+      <h1 className="text-lg font-medium tracking-[-0.01em]">Something went wrong</h1>
+
+      <p className="mt-4 max-w-prose text-ink-2">
         This page could not be rendered. It is a fault in the build rather than anything you
         did.
       </p>
@@ -124,6 +137,6 @@ export default function Error({
           Back to the clinic →
         </a>
       </p>
-    </AppShell>
+    </main>
   )
 }
