@@ -277,6 +277,21 @@ const DESCRIBE_FOCUS = String.raw`(() => {
     outline: cs.outlineStyle + ' ' + cs.outlineWidth + ' ' + cs.outlineColor,
     ring: !(cs.outlineStyle === 'none' || cs.outlineWidth === '0px'),
     size: [Math.round(r.width), Math.round(r.height)],
+    /*
+      Whether this is a link sitting inside a sentence, which WCAG 2.5.8
+      exempts from the minimum target size. Without it the size checks report
+      "Change the time" on the details step -- 116x17, mid-paragraph, exactly
+      what the exemption is written for -- and a checker that cries wolf on a
+      compliant page teaches whoever reads it to skim the list.
+    */
+    inlineInText: (() => {
+      if (cs.display !== 'inline') return false
+      const parent = el.parentElement
+      if (!parent) return false
+      const around = (parent.innerText || '').trim().length
+      const own = (el.innerText || '').trim().length
+      return around > own + 20
+    })(),
     id: el.id || null,
   }
 })()`
@@ -520,7 +535,12 @@ for (const [label, path] of PAGES) {
   page.silentStops = stops.filter((s) => !s.ax?.name)
   page.stopsInsideAriaHidden = stops.filter((s) => s.ariaHidden)
   page.stopsWithNoRing = stops.filter((s) => !s.ring)
-  page.targetsUnder24px = stops.filter((s) => s.size[1] > 0 && s.size[1] < 24)
+  // WCAG 2.5.8 asks 24x24 of a target, and exempts a link inside a block of
+  // text. The exemption is honoured here rather than left for a human to
+  // re-derive every time the sweep runs.
+  page.targetsUnder24px = stops.filter(
+    (s) => s.size[1] > 0 && s.size[1] < 24 && !s.inlineInText,
+  )
   page.order = stops.map((s) => s.ax?.name || '(no accessible name)')
 
   // Arrow keys inside the grid. Tab to the first slot, then walk right and
