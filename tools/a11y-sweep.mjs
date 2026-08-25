@@ -367,7 +367,6 @@ for (const [label, path] of PAGES) {
       // One more Tab from inside the grid must leave it entirely, or the
       // roving tabindex is not doing its job.
       await tab()
-      const after = await evaluate(DESCRIBE_FOCUS)
       const afterName = (await accessibleName())?.name ?? ''
       page.tabLeavesGrid = !/^\d{2}:\d{2}/.test(afterName)
       page.afterGrid = afterName
