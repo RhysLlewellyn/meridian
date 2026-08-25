@@ -15,7 +15,12 @@
     "db:studio": "drizzle-kit studio",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down -v",
-    "seed": "node --env-file=.env src/db/seed.ts"
+    "seed": "node --env-file=.env src/db/seed.ts",
+    "a11y": "node tools/a11y-sweep.mjs",
+    "contrast": "node tools/contrast.ts",
+    "measure": "node tools/measure.ts",
+    "shots": "node tools/screenshots.mjs",
+    "nvda": "powershell -NoProfile -File tools/nvda-pass.ps1"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.6",
