@@ -26,10 +26,30 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   const base = siteUrl()
   const db = getDb()
-  const [services, practitioners] = await Promise.all([
-    listServices(db),
-    listPractitionersWithSpecialties(db),
-  ])
+
+  // An agent that gets a 500 here has been told the site is broken. 503 with
+  // `retry-after` says the opposite -- come back in a moment -- and it is the
+  // truthful answer for a compute that is waking up.
+  let services: Awaited<ReturnType<typeof listServices>>
+  let practitioners: Awaited<ReturnType<typeof listPractitionersWithSpecialties>>
+  try {
+    ;[services, practitioners] = await Promise.all([
+      listServices(db),
+      listPractitionersWithSpecialties(db),
+    ])
+  } catch {
+    return new Response(
+      `# Meridian
+
+The database is not answering, so this file cannot be built right now. This deployment
+runs on a free tier that suspends its compute when idle. Try again in a few seconds.
+`,
+      {
+        status: 503,
+        headers: {'content-type': 'text/markdown; charset=utf-8', 'retry-after': '5'},
+      },
+    )
+  }
 
   const body = `# Meridian
 

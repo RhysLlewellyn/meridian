@@ -12,6 +12,7 @@ import {getDb} from '../../../src/db/index.ts'
 import {formatDateWithYear, formatDuration, formatPrice} from '../../../src/format.ts'
 import {AppShell} from '../../AppShell.tsx'
 import {CancelForm} from './CancelForm.tsx'
+import {Unavailable} from '../../unavailable.tsx'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +22,16 @@ type Props = {params: Promise<{reference: string}>}
 
 export default async function ManageBooking({params}: Props) {
   const {reference} = await params
-  const detail = await getBookingByReference(getDb(), reference)
+
+  // A dead database must not render as "no such appointment". Somebody
+  // checking a booking they hold would be told it does not exist, which is the
+  // single most alarming thing this page could say wrongly.
+  let detail: Awaited<ReturnType<typeof getBookingByReference>>
+  try {
+    detail = await getBookingByReference(getDb(), reference)
+  } catch {
+    return <Unavailable title="Your appointment" retry={`/booking/${reference}`} />
+  }
   if (!detail) notFound()
 
   const date = formatCalendarDate(calendarDateAt(detail.startsAt))

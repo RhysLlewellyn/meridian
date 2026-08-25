@@ -10,6 +10,7 @@ import {getDb} from '../src/db/index.ts'
 import {formatDurationShort, formatPrice} from '../src/format.ts'
 import {AppShell} from './AppShell.tsx'
 import {PractitionerDirectory} from './PractitionerDirectory.tsx'
+import {Unavailable} from './unavailable.tsx'
 
 // Reads the clinic's services and practitioners, so it is rendered per request
 // rather than baked at build time against whatever database happened to be
@@ -18,11 +19,22 @@ export const dynamic = 'force-dynamic'
 
 export default async function Home() {
   const db = getDb()
-  const [services, practitioners, next] = await Promise.all([
-    listServices(db),
-    listPractitionersWithSpecialties(db),
-    nextAvailableByPractitioner(),
-  ])
+
+  // Every route resolves its queries here rather than streaming them, so a
+  // suspended database produces a complete page instead of the framework's
+  // exception handler. See `unavailable.tsx` for why it is not a `Suspense`.
+  let services: Awaited<ReturnType<typeof listServices>>
+  let practitioners: Awaited<ReturnType<typeof listPractitionersWithSpecialties>>
+  let next: Awaited<ReturnType<typeof nextAvailableByPractitioner>>
+  try {
+    ;[services, practitioners, next] = await Promise.all([
+      listServices(db),
+      listPractitionersWithSpecialties(db),
+      nextAvailableByPractitioner(),
+    ])
+  } catch {
+    return <Unavailable title="The clinic" retry="/" current="clinic" />
+  }
 
   const specialties = [...new Set(services.map((s) => s.specialty))].sort()
 

@@ -10,6 +10,7 @@ import {
 import {getDb} from '../../../src/db/index.ts'
 import {formatDurationShort, formatPrice} from '../../../src/format.ts'
 import {BookingFrame} from '../BookingFrame.tsx'
+import {Unavailable} from '../../unavailable.tsx'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,17 +18,36 @@ type Props = {params: Promise<{service: string}>}
 
 export async function generateMetadata({params}: Props): Promise<Metadata> {
   const {service} = await params
-  const row = await getServiceBySlug(getDb(), service)
+  // A title is not worth a 500. This already has a branch for "no such
+  // service"; a database that will not answer lands in the same place, and the
+  // page below renders the real fallback.
+  const row = await getServiceBySlug(getDb(), service).catch(() => undefined)
   return {title: row ? `${row.name} — choose a practitioner` : 'Choose a practitioner'}
 }
 
 export default async function ChoosePractitioner({params}: Props) {
   const db = getDb()
   const {service: serviceSlug} = await params
-  const service = await getServiceBySlug(db, serviceSlug)
-  if (!service) notFound()
 
-  const practitioners = await listPractitionersForService(db, service.id)
+  // `notFound()` throws a control-flow error of its own, so it stays outside
+  // the `try`. Catching it would answer a wrong slug with "the database is not
+  // answering", which is both wrong and impossible to debug.
+  let service: Awaited<ReturnType<typeof getServiceBySlug>>
+  let practitioners: Awaited<ReturnType<typeof listPractitionersForService>> = []
+  try {
+    service = await getServiceBySlug(db, serviceSlug)
+    if (service) practitioners = await listPractitionersForService(db, service.id)
+  } catch {
+    return (
+      <Unavailable
+        booking
+        title="Choose a practitioner"
+        retry={`/book/${serviceSlug}`}
+        current="book"
+      />
+    )
+  }
+  if (!service) notFound()
 
   return (
     <BookingFrame

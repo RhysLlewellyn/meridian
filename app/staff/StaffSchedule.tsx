@@ -11,6 +11,7 @@ import {AppShell} from '../AppShell.tsx'
 import {CancelForm} from '../booking/[reference]/CancelForm.tsx'
 import {getDb} from '../../src/db/index.ts'
 import {formatDate, formatDateShort, formatDuration} from '../../src/format.ts'
+import {Unavailable} from '../unavailable.tsx'
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
@@ -37,11 +38,23 @@ export async function StaffSchedule({practitionerSlug, date: dateParam, open}: P
   const date = dateParam && DATE_PATTERN.test(dateParam) ? dateParam : today()
 
   const db = getDb()
-  const [bookings, onShift, everybody] = await Promise.all([
-    listDayBookings(db, date, practitionerSlug),
-    practitionersOnShift(db, date),
-    listPractitioners(db),
-  ])
+
+  // Both staff routes render through this component, so one catch covers them
+  // both. The front desk is the surface where a suspended database is most
+  // likely to be met cold -- it is the page somebody opens first thing.
+  let bookings: Awaited<ReturnType<typeof listDayBookings>>
+  let onShift: Awaited<ReturnType<typeof practitionersOnShift>>
+  let everybody: Awaited<ReturnType<typeof listPractitioners>>
+  try {
+    ;[bookings, onShift, everybody] = await Promise.all([
+      listDayBookings(db, date, practitionerSlug),
+      practitionersOnShift(db, date),
+      listPractitioners(db),
+    ])
+  } catch {
+    const base = practitionerSlug ? `/staff/${practitionerSlug}` : '/staff'
+    return <Unavailable title="Schedule" retry={`${base}?date=${date}`} current="schedule" />
+  }
 
   const confirmed = bookings.filter((b) => b.status === 'confirmed')
   const cancelled = bookings.filter((b) => b.status === 'cancelled')

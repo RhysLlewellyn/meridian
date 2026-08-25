@@ -9,6 +9,7 @@ import {
 import {getDb} from '../../../../../src/db/index.ts'
 import {BookingFrame} from '../../../BookingFrame.tsx'
 import {DetailsForm} from './DetailsForm.tsx'
+import {Unavailable} from '../../../../unavailable.tsx'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,10 +28,24 @@ export default async function Details({params, searchParams}: Props) {
   const {date, time} = await searchParams
 
   const db = getDb()
-  const service = await getServiceBySlug(db, serviceSlug)
+
+  let service: Awaited<ReturnType<typeof getServiceBySlug>>
+  let practitioners: Awaited<ReturnType<typeof listPractitionersForService>> = []
+  try {
+    service = await getServiceBySlug(db, serviceSlug)
+    if (service) practitioners = await listPractitionersForService(db, service.id)
+  } catch {
+    return (
+      <Unavailable
+        booking
+        title="Your details"
+        retry={`/book/${serviceSlug}/${practitionerSlug}`}
+        current="book"
+      />
+    )
+  }
   if (!service) notFound()
 
-  const practitioners = await listPractitionersForService(db, service.id)
   const practitioner = practitioners.find((p) => p.slug === practitionerSlug)
   if (!practitioner) notFound()
 

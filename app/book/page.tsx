@@ -5,13 +5,19 @@ import {listServices} from '../../src/availability/query.ts'
 import {getDb} from '../../src/db/index.ts'
 import {formatDurationShort, formatPrice} from '../../src/format.ts'
 import {BookingFrame} from './BookingFrame.tsx'
+import {Unavailable} from '../unavailable.tsx'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {title: 'Choose a service'}
 
 export default async function ChooseService() {
-  const services = await listServices(getDb())
+  let services: Awaited<ReturnType<typeof listServices>>
+  try {
+    services = await listServices(getDb())
+  } catch {
+    return <Unavailable booking title="Choose a service" retry="/book" current="book" />
+  }
 
   return (
     <BookingFrame step={1} title="Choose a service" selection={{}}>

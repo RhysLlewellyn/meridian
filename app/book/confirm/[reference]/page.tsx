@@ -15,6 +15,7 @@ import {composeConfirmationEmail} from '../../../../src/booking/email.ts'
 import {getDb} from '../../../../src/db/index.ts'
 import {formatDateWithYear, formatPrice} from '../../../../src/format.ts'
 import {AppShell} from '../../../AppShell.tsx'
+import {Unavailable} from '../../../unavailable.tsx'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,10 +26,27 @@ type Props = {params: Promise<{reference: string}>}
 export default async function Confirmation({params}: Props) {
   const {reference} = await params
   const db = getDb()
-  const detail = await getBookingByReference(db, reference)
-  if (!detail) notFound()
 
-  const email = await getEmailOutcome(db, detail.id)
+  // This is the page somebody lands on immediately after booking. Telling them
+  // the appointment does not exist because Postgres blinked would be the worst
+  // moment in the flow to get wrong.
+  let detail: Awaited<ReturnType<typeof getBookingByReference>>
+  let email: Awaited<ReturnType<typeof getEmailOutcome>>
+  try {
+    detail = await getBookingByReference(db, reference)
+    if (!detail) {
+      // Outside the catch in spirit: a missing row is a 404, not an outage.
+      // Assigned so the compiler can see `email` is always set below.
+      email = undefined
+    } else {
+      email = await getEmailOutcome(db, detail.id)
+    }
+  } catch {
+    return (
+      <Unavailable title="Appointment confirmed" retry={`/book/confirm/${reference}`} />
+    )
+  }
+  if (!detail) notFound()
   const date = formatCalendarDate(calendarDateAt(detail.startsAt))
   const cancelled = detail.status === 'cancelled'
 

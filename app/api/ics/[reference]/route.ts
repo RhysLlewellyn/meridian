@@ -16,7 +16,22 @@ export async function GET(
   {params}: {params: Promise<{reference: string}>},
 ) {
   const {reference} = await params
-  const detail = await getBookingByReference(getDb(), reference)
+
+  // 503 and not 404. A calendar client that is told 404 has been told the
+  // appointment is gone, and some of them will act on that; 503 with
+  // `retry-after` says "ask again", which is what a suspended compute means.
+  let detail: Awaited<ReturnType<typeof getBookingByReference>>
+  try {
+    detail = await getBookingByReference(getDb(), reference)
+  } catch {
+    return new Response('The database is not answering. Try again in a few seconds.', {
+      status: 503,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'retry-after': '5',
+      },
+    })
+  }
 
   if (!detail) {
     return new Response('No appointment with that reference.', {

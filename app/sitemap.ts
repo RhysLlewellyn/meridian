@@ -21,7 +21,13 @@ import {siteUrl} from '../src/site-url.ts'
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl()
-  const services = await listServices(getDb())
+
+  // The service rows are the only part of this that needs a database, and the
+  // four static entries are worth more than a build that fails. `next build`
+  // prerenders this route, so an unreachable database at deploy time used to
+  // take the whole deployment down with it -- which on a free tier that
+  // suspends when idle is a plausible Tuesday rather than a disaster.
+  const services = await listServices(getDb()).catch(() => [])
 
   return [
     {url: base, priority: 1},

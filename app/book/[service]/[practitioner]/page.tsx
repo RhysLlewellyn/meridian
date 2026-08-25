@@ -15,6 +15,7 @@ import {getDb} from '../../../../src/db/index.ts'
 import {formatDate, formatDateShort} from '../../../../src/format.ts'
 import {BookingFrame} from '../../BookingFrame.tsx'
 import {SlotGrid} from '../../SlotGrid.tsx'
+import {Unavailable} from '../../../unavailable.tsx'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +28,9 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
 export async function generateMetadata({params}: Props): Promise<Metadata> {
   const {service} = await params
-  const row = await getServiceBySlug(getDb(), service)
+  // As on the previous step: the title falls back rather than throwing, so the
+  // page's own fallback is what the reader sees.
+  const row = await getServiceBySlug(getDb(), service).catch(() => undefined)
   return {title: row ? `${row.name} — choose a time` : 'Choose a time'}
 }
 
@@ -36,20 +39,48 @@ export default async function ChooseTime({params, searchParams}: Props) {
   const {date: dateParam, taken} = await searchParams
 
   const db = getDb()
-  const service = await getServiceBySlug(db, serviceSlug)
-  if (!service) notFound()
-
-  const offering = await listPractitionersForService(db, service.id)
-  if (practitionerSlug !== ANY && !offering.some((p) => p.slug === practitionerSlug)) {
-    notFound()
-  }
-
   const now = new Date()
   // An unparseable date in the URL is a typo or a crawler, not a 404. Show
   // today rather than an error page.
   const date = dateParam && DATE_PATTERN.test(dateParam) ? dateParam : today(now)
 
-  const {slots, unavailable} = await availabilityFor(db, service, practitionerSlug, date, now)
+  // The three reads that this page cannot render without, in one `try`. The
+  // `notFound()` calls stay outside it: they throw a control-flow error of
+  // their own, and catching that would answer a wrong slug with "the database
+  // is not answering".
+  let service: Awaited<ReturnType<typeof getServiceBySlug>>
+  let offering: Awaited<ReturnType<typeof listPractitionersForService>> = []
+  let availability: Awaited<ReturnType<typeof availabilityFor>> | undefined
+  try {
+    service = await getServiceBySlug(db, serviceSlug)
+    if (service) {
+      offering = await listPractitionersForService(db, service.id)
+      const known =
+        practitionerSlug === ANY || offering.some((p) => p.slug === practitionerSlug)
+      if (known) {
+        availability = await availabilityFor(db, service, practitionerSlug, date, now)
+      }
+    }
+  } catch {
+    return (
+      <Unavailable
+        booking
+        title="Choose a date and time"
+        retry={`/book/${serviceSlug}/${practitionerSlug}?date=${date}`}
+        current="book"
+      />
+    )
+  }
+
+  if (!service) notFound()
+  if (practitionerSlug !== ANY && !offering.some((p) => p.slug === practitionerSlug)) {
+    notFound()
+  }
+  // Unreachable once the two checks above have passed -- the query runs
+  // whenever the practitioner is known -- but the compiler cannot see that.
+  if (!availability) notFound()
+
+  const {slots, unavailable} = availability
 
   const chosen = offering.find((p) => p.slug === practitionerSlug)
   const detailsBase = `/book/${service.slug}`
