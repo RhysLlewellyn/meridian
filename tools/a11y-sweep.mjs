@@ -46,7 +46,15 @@ const PAGES = [
   ['step2-practitioner', '/book/initial-assessment'],
   ['step3-time', `/book/initial-assessment/nadia-okafor?date=${GRID_DATE}`],
   ['step3-any', `/book/initial-assessment/any?date=${GRID_DATE}`],
+  // Step 4 was never swept, which is the step with the only form in the flow
+  // and therefore the labels, the hints and the error wiring.
+  [
+    'step4-details',
+    `/book/initial-assessment/nadia-okafor/details?date=${GRID_DATE}&time=10:00`,
+  ],
   ['staff', '/staff'],
+  // The 404, which exists as of today and is the page a stale link lands on.
+  ['not-found', '/no-such-page'],
 ]
 
 const profile = join(tmpdir(), 'a11y-sweep-' + process.pid)
@@ -139,6 +147,28 @@ async function goto(url) {
   // Fonts and hydration: the focus ring is a computed style, the tab order
   // depends on the DOM being final, and the roving tabindex is React's.
   await new Promise((r) => setTimeout(r, 1800))
+}
+
+/**
+ * Resize the viewport without restarting Chrome.
+ *
+ * `--window-size` is set once at launch, so until this existed the sweep had
+ * exactly one width and no way to ask for another. `mobile: true` matters as
+ * much as the numbers: it is what makes `pointer: coarse` match, and the touch
+ * targets in this build size themselves behind that media query.
+ */
+async function setViewport(width, height, mobile = false) {
+  await send('Emulation.setDeviceMetricsOverride', {
+    width,
+    height,
+    deviceScaleFactor: 1,
+    mobile,
+  })
+  // `maxTouchPoints` must be 1-16 whether or not touch is enabled; passing 0
+  // to turn it off is rejected outright rather than ignored.
+  await send('Emulation.setTouchEmulationEnabled', {enabled: mobile, maxTouchPoints: 5})
+  // Let the reflow settle before anything measures it.
+  await new Promise((r) => setTimeout(r, 350))
 }
 
 /** Press a key as a real keyboard would, so :focus-visible actually matches. */
@@ -285,6 +315,156 @@ const GRID_SHAPE = String.raw`(() => {
   }
 })()`
 
+/**
+ * What only goes wrong on a phone.
+ *
+ * Ported from Ledger, where the same two probes at 360 found a chart axis drawn
+ * outside the viewport and six scrollable regions a keyboard could not reach --
+ * none of which axe reported, because axe's own rules only fire at a width
+ * where the region actually overflows, and that sweep only ran at 1280.
+ *
+ * Both probes are written to be capable of returning something, which is the
+ * part that matters. The check they replace in Ledger was
+ * `documentElement.scrollWidth > innerWidth`, and it could not fail:
+ * `overflow-x: clip` pins `scrollWidth` to `clientWidth` by definition, so it
+ * reported "no sideways scroll" for three months on a page that was drawing
+ * content off-screen. Meridian has no `clip` rule and the same question is
+ * still the wrong one here for the opposite reason -- `documentElement`
+ * .`scrollWidth` reads 609 on a 390px `/staff` while `window.scrollX` never
+ * leaves 0, so the document "overflows" by an amount nobody can scroll to.
+ *
+ * The right question is not whether the document scrolls. It is whether
+ * anything is unreachable: wider than the viewport, with no ancestor that
+ * scrolls to it.
+ */
+const NARROW = String.raw`(() => {
+  /*
+    The viewport width, and not from 'window.innerWidth'.
+
+    Under Chrome's mobile emulation 'innerWidth' is the layout viewport, and
+    Chrome widens that to fit content it cannot shrink. Measured on this build
+    at 360x780: '/staff' reports innerWidth 601 while documentElement
+    .clientWidth, body.scrollWidth and visualViewport.width are all 360. Every
+    other page reports 360 for all four.
+
+    That is not a curiosity, it is the bug this probe was about to ship with.
+    The overflow test compares each element's right edge against the viewport,
+    so on '/staff' -- the one page here with a table wider than a phone, and
+    therefore the likeliest page in the build to have something unreachable --
+    the threshold would have been 241px too generous. A check that cannot fail
+    on the page it was written for.
+
+    'documentElement.clientWidth' is the CSS layout viewport and reads 360
+    everywhere.
+  */
+  const vw = document.documentElement.clientWidth
+
+  const scrolls = (el) => {
+    const cs = getComputedStyle(el)
+    return (
+      (cs.overflowX === 'auto' || cs.overflowX === 'scroll') &&
+      el.scrollWidth > el.clientWidth + 1
+    )
+  }
+
+  return {
+    viewport: vw,
+    // Kept alongside so a future divergence is visible rather than silent.
+    innerWidth: window.innerWidth,
+
+    // Content past the right edge with nowhere to scroll to it.
+    unreachableOverflow: (() => {
+      const out = []
+      for (const el of document.querySelectorAll('main *')) {
+        const box = el.getBoundingClientRect()
+        if (box.width === 0 || box.right <= vw + 1) continue
+        // Leaves only, so one wide table does not report every cell inside it.
+        if (el.querySelector('*')) continue
+        let scroller = null
+        for (let p = el.parentElement; p; p = p.parentElement) {
+          if (scrolls(p)) { scroller = p; break }
+        }
+        if (!scroller) {
+          out.push({
+            tag: el.tagName.toLowerCase(),
+            text: (el.textContent || '').trim().slice(0, 40),
+            right: Math.round(box.right),
+            viewport: vw,
+          })
+        }
+      }
+      return out.slice(0, 12)
+    })(),
+
+    /*
+      Scrollable regions a keyboard cannot reach.
+
+      A div with 'overflow-x: auto' scrolls with a mouse and not with a
+      keyboard, because Chrome only gives arrow keys to a scroller that can
+      take focus. A region holding its own focusable children is exempt --
+      tabbing to them scrolls it -- which is why the schedule table, whose rows
+      each carry an Open link, is not reported here.
+    */
+    unfocusableScrollers: Array.from(document.querySelectorAll('main *'))
+      .filter((el) => {
+        const cs = getComputedStyle(el)
+        if (cs.overflowX !== 'auto' && cs.overflowX !== 'scroll') return false
+        if (el.scrollWidth <= el.clientWidth + 1) return false
+        if (el.tabIndex >= 0) return false
+        return !el.querySelector('a[href], button, input, select, textarea, [tabindex]')
+      })
+      .map((el) => ({
+        tag: el.tagName.toLowerCase(),
+        label: el.getAttribute('aria-label'),
+        overflowBy: el.scrollWidth - el.clientWidth,
+      })),
+
+    /*
+      Touch targets, measured where a thumb is actually the pointer.
+
+      The controls in this build size themselves behind 'pointer: coarse', so
+      the 1280 pass cannot see the height a phone gets -- it sees the desk
+      density, which is deliberate and different. Anything narrower than 44px
+      is skipped rather than reported: that is an inline link inside a
+      sentence, which WCAG 2.5.8 exempts, and reporting it would train whoever
+      reads this to ignore the list.
+    */
+    targetsUnder44px: Array.from(
+      document.querySelectorAll('main a[href], main button, main input, main summary'),
+    )
+      .map((el) => {
+        const r = el.getBoundingClientRect()
+        /*
+          WCAG 2.5.8 exempts a link inside a block of text, and the exemption
+          has to be detected rather than guessed at. An earlier version of this
+          filter used width as the proxy -- anything under 44px wide is
+          probably inline -- and it was wrong on the first page it met:
+          "Change the time" on the details step is 116px wide and 17 tall,
+          sitting mid-sentence, and got reported as a defect it is not.
+
+          The real test is whether the link is inline and the text around it is
+          more than the link itself.
+        */
+        const parent = el.parentElement
+        const parentText = parent ? (parent.innerText || '').trim() : ''
+        const ownText = (el.innerText || '').trim()
+        const inlineInText =
+          getComputedStyle(el).display === 'inline' &&
+          parentText.length > ownText.length + 20
+
+        return {
+          tag: el.tagName.toLowerCase(),
+          text: (el.innerText || el.getAttribute('aria-label') || '').trim().slice(0, 30),
+          w: Math.round(r.width),
+          h: Math.round(r.height),
+          inlineInText,
+        }
+      })
+      .filter((t) => t.h > 0 && t.h < 44 && !t.inlineInText)
+      .slice(0, 12),
+  }
+})()`
+
 const results = []
 
 for (const [label, path] of PAGES) {
@@ -385,8 +565,36 @@ for (const [label, path] of PAGES) {
       'first: v.nodes[0] && v.nodes[0].target ? v.nodes[0].target.join(" ") : ""})))',
   )
 
+  /*
+    The same page again at 360.
+
+    Last, because everything above it -- the tab walk, the skip link, the
+    roving tabindex inside the grid -- is measured at the width this build was
+    designed at, and resizing mid-walk would invalidate it.
+
+    A fresh navigation after the resize rather than a reflow into it. The rail
+    switches from a column to a row, the slot grid is `auto-fill`, and the
+    schedule table's scroll hint appears below 40rem: a layout built at 360 and
+    a layout dragged down to 360 are not reliably the same thing, and the one
+    worth measuring is the one a phone actually gets.
+  */
+  await setViewport(360, 780, true)
+  await goto(url)
+  page.narrow = await evaluate(NARROW)
+  await evaluate(axeSource + ';0')
+  page.narrowAxeViolations = await evaluate(
+    'axe.run(document, {resultTypes:["violations"]}).then(r => r.violations.map(v => ' +
+      '({id: v.id, impact: v.impact, nodes: v.nodes.length, help: v.help, ' +
+      'first: v.nodes[0] && v.nodes[0].target ? v.nodes[0].target.join(" ") : ""})))',
+  )
+  await setViewport(1280, 900, false)
+
   results.push(page)
-  process.stderr.write('  swept ' + label + '\n')
+  process.stderr.write(
+    '  swept ' + label +
+      ' (1280: ' + page.axeViolations.length + ' violations, 360: ' +
+      page.narrowAxeViolations.length + ')' + String.fromCharCode(10),
+  )
 }
 
 console.log(JSON.stringify(results, null, 2))
