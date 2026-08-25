@@ -20,25 +20,38 @@ migrations checked in · Tailwind v4 · Vitest · Resend for the confirmation em
 ## Lighthouse
 
 Lighthouse 13.4.1, mobile preset, run against the deployed URL rather than a local build.
-Median of five runs per page.
+Five runs per page, and the table quotes **the lowest of the five**, not the median and not
+the best.
 
 | | Performance | Accessibility | Best practices | SEO | Agentic Browsing |
 |---|---|---|---|---|---|
-| `/` — the clinic | **97** | **100** | **100** | **100** | **100** |
+| `/` — the clinic | **99** | **100** | **100** | **100** | **100** |
 | `/book/initial-assessment/any` — the booking grid | **99** | **100** | **100** | **100** | **100** |
 
-CLS is **0** on both, which is the number a layout change is most likely to cost you and the
-one I check first. LCP is 2.0 s on both and TBT is 88 ms and 80 ms.
+Measured 25 August 2026. The runs behind those two numbers were 100, 99, 99, 99, 99 on the
+homepage and 100, 99, 100, 100, 99 on the grid — medians of 99 and 100, which is what this
+table used to quote. It quotes the worst run now instead. A median hides one bad run in five
+by construction, and the run somebody else gets when they open the link is drawn from the
+whole distribution rather than from the middle of it.
+
+CLS is **0** on both, across all ten runs and separately across forty runs of `npm run
+measure`, which is the number a layout change is most likely to cost you and the one I check
+first. Worst-of-five LCP is 2.20 s and 2.15 s; worst-of-five TBT is 20 ms and 15 ms; time to
+first byte is 13 ms and 12 ms.
 
 Five runs rather than three because performance is the one category that will not sit still
-here. The homepage scored 99, 99, 97, 97, 97 across those five, on a page whose LCP is a
-paragraph of text and whose time to first byte is 66 ms — the remaining two seconds is render
-delay under Lighthouse's simulated mobile throttling, not the server. Running the same
-measurement against the *previous* deployment on the same afternoon gives 98, 100, 99, so the
-band is the hobby tier and the throttle rather than anything in the build. A single lucky run
-is what a screenshot of a 100 usually is, and quoting one would have been the easier thing to
-do. Every page that touches the database is rendered per request — there is no static cache
-doing that work.
+here, on a page whose LCP is a paragraph of text — the two seconds is render delay under
+Lighthouse's simulated mobile throttling, not the server. Every page that touches the
+database is rendered per request; there is no static cache doing that work.
+
+The previous version of this table quoted 97 and 99 as medians, with TBT at 88 ms and 80 ms,
+measured on 24 August against the deployment before the error-boundary and
+database-fallback work. Both pages score higher now and TBT is roughly a fifth of what it
+was. I am not going to claim credit for that: nothing in that change set was a performance
+change, the two measurements are a day apart on a hobby tier, and the honest reading is that
+some of the earlier figure was the afternoon rather than the build. What is safe to say is
+that the numbers above are the ones the deployed build produces today, and that they are the
+floor of five runs rather than the middle.
 
 Agentic Browsing is the fifth category in Lighthouse 13, replacing PWA. It scores what an
 agent rather than a person can make of the page: the accessibility tree it would have to
@@ -148,6 +161,47 @@ unreachable database is a broken pipeline rather than a local convenience.
 
 ---
 
+## When the database is not there
+
+This runs on Neon's free tier, which suspends its compute when idle. A cold first request has
+a real chance of finding nothing at the other end, so that is a designed state rather than an
+exception: every route resolves its own queries and renders a page saying the database is
+waking up, with a link that retries. Stop the container and load all twelve routes and none of
+them reaches the framework's error handler. The two non-HTML routes answer **503 with
+`retry-after`** rather than 500 — a calendar client told 404 has been told the appointment is
+gone, and an agent told 500 has been told the site is broken.
+
+**There is no `loading.tsx` and no `Suspense` anywhere, and that is the interesting part.**
+The obvious way to do this is a streamed fallback, and it breaks the thing this build cares
+about most. With a `loading.tsx` on `/staff` and JavaScript disabled, the page renders 38
+characters — the fallback — and stops: the real schedule is in the response, sitting inside a
+`<div hidden>` waiting for an inline script that will never run. Without it the same page
+renders 541 characters of real content. A fallback that hides the page from exactly the
+readers it was meant to help is worse than no fallback, so the resolution happens before
+anything is returned.
+
+**The booking POST does not get the same promise as a read.** A read that fails can offer
+"try again" safely because nothing was written. A booking has three failure points and they
+are not equivalent: before the insert nothing was written and the message says so; after it
+the appointment exists and the remaining work — the email, the audit row — is best effort and
+is not allowed to turn a committed booking into an error page. Between those is the connection
+dying mid-`COMMIT`, where the appointment either exists or does not and this process cannot
+find out which. Guessing there is what sends somebody to book a second appointment, so it does
+not guess. It says the state is unknown, points at the grid — a confirmed booking removes its
+time — and says plainly that retrying is safe.
+
+That last claim is not reassurance, it is the exclusion constraint again. A retry that finds
+the first write did land is refused by Postgres and comes back as `slot_taken`. Two confirmed
+appointments in one slot is not something the application has to avoid; it is something the
+table cannot hold.
+
+There is a `not-found.tsx`, an `error.tsx` and a `global-error.tsx`. The 404 will not tell you
+whether a booking reference exists — the reference is the only credential in the build, and a
+page that answers "does MRD-4K2P exist?" differently from "does MRD-4K2Q exist?" is an
+enumeration oracle over other people's appointments.
+
+---
+
 ## Timezones
 
 Every instant is stored as `timestamptz` and rendered in `Europe/London`. Working hours are the
@@ -250,9 +304,20 @@ beside its token in [`app/globals.css`](app/globals.css).
 DevTools protocol, tabs each page the way a keyboard user would, and reads accessible names out
 of Chrome's own accessibility tree rather than guessing from `textContent` — those two disagree
 exactly around visually-hidden spans and block children, which is precisely how the slot buttons
-are built. Current run over six pages: no axe violations, no unnamed tab stop, no tab stop
-without a focus ring, no target under 24px, one tab stop per grid, and a skip link that moves
-focus into `<main>` rather than merely scrolling to it.
+are built.
+
+It runs every page twice, at 1280 and again at 360 with touch emulation on — the second width
+is not cosmetic, because the controls here size themselves behind `pointer: coarse` and a desk
+viewport cannot see what a thumb gets. The narrow pass also looks for content wider than the
+viewport with no ancestor that scrolls to it, and for `overflow-x: auto` regions a keyboard
+cannot reach. Neither asks whether the *document* scrolls, which is the wrong question:
+`documentElement.scrollWidth` reads 609 on a 390px `/staff` while `window.scrollX` never
+leaves 0.
+
+Current run over eight pages: **no axe violations at either width**, no unnamed tab stop, no
+tab stop without a focus ring, no target below its WCAG minimum, nothing unreachable, one tab
+stop per grid, and a skip link that moves focus into `<main>` rather than merely scrolling to
+it.
 
 `tools/nvda-pass.ps1` is the second. It starts NVDA against a scratch profile with the
 `silence` synth, so every utterance is logged at DEBUG level without being spoken aloud, and
@@ -328,11 +393,17 @@ npm run dev                   # http://localhost:3002
 ```
 
 ```bash
-npm test                              # 63 tests; 18 of them need the database
-node tools/a11y-sweep.mjs             # keyboard and accessibility-tree sweep
-pwsh tools/nvda-pass.ps1              # captures what NVDA actually says (Windows)
-node tools/screenshots.mjs            # regenerates docs/
+npm test                      # 69 tests; 18 of them need the database
+npm run a11y                  # keyboard and accessibility-tree sweep, at 1280 and 360
+npm run contrast              # every palette pairing against its WCAG threshold
+npm run measure               # CLS per route, five runs, worst reported
+npm run nvda                  # captures what NVDA actually says (Windows)
+npm run shots                 # regenerates docs/
 ```
+
+`a11y`, `contrast` and `measure` all exit non-zero on a failure, and each has been checked
+against a deliberately broken page — a checker that has never returned a finding is not
+evidence of a clean build.
 
 The seed builds three practitioners with deliberately different patterns — Nadia Mon–Thu
 08:00–16:00 with a lunch block, Tomas Tue/Wed/Fri 10:00–18:00 with no lunch and an hour for the
