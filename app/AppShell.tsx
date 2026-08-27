@@ -164,6 +164,7 @@ function Rail({current}: {current?: NavKey}) {
       <p className="hidden px-4 pt-4 text-xs text-muted lg:block">
         An invented clinic, built to demonstrate a booking system. Nobody is expecting you.
       </p>
+      <p className="hidden px-4 pt-3 text-xs text-muted lg:block">Page views are counted by Vercel Web Analytics. No cookies, nothing stored on your device.</p>
     </header>
   )
 }
